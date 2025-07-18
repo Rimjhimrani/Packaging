@@ -763,7 +763,7 @@ class ExactPackagingTemplateManager:
         }
         
         # Fill procedure steps in merged cells (B24:B33)
-         for i in range(1, 11):
+        for i in range(1, 11):
             step_key = f'Procedure Step {i}'
             if step_key in data_dict and data_dict[step_key]:
                 row = 23 + i
