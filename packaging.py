@@ -1,15 +1,14 @@
-import streamlit as st
 import pandas as pd
 import openpyxl
 from openpyxl import load_workbook
-from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
-import re
-from difflib import SequenceMatcher
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import tempfile
+from openpyxl.drawing.image import Image  # ✅ Corrected
+import io
+import base64
+from PIL import Image as PILImage
+import zipfile
 import os
+import tempfile
 
 class ExactPackagingTemplateManager:
     def __init__(self):
