@@ -785,105 +785,104 @@ def main():
     uploaded_file = st.file_uploader(
         "Upload CSV/Excel file with packaging data",
         type=['csv', 'xlsx', 'xls'],
-            help="Upload a file containing the packaging instruction data"
-        )
-        
-        # Manual data entry option
-        with st.expander("🖊️ Manual Data Entry", expanded=not uploaded_file):
-            # Create form for manual entry
-            with st.form("manual_data_form"):
-                st.markdown("### Header Information")
-                revision_no = st.text_input("Revision No.", value="Revision 1")
-                date = st.date_input("Date", value=pd.Timestamp.now().date())
+        help="Upload a file containing the packaging instruction data"
+    )
+    # Manual data entry option
+    with st.expander("🖊️ Manual Data Entry", expanded=not uploaded_file):
+        # Create form for manual entry
+        with st.form("manual_data_form"):
+            st.markdown("### Header Information")
+            revision_no = st.text_input("Revision No.", value="Revision 1")
+            date = st.date_input("Date", value=pd.Timestamp.now().date())
                 
-                st.markdown("### Vendor Information")
-                vendor_code = st.text_input("Vendor Code")
-                vendor_name = st.text_input("Vendor Name")
-                vendor_location = st.text_input("Vendor Location")
+            st.markdown("### Vendor Information")
+            vendor_code = st.text_input("Vendor Code")
+            vendor_name = st.text_input("Vendor Name")
+            vendor_location = st.text_input("Vendor Location")
                 
-                st.markdown("### Part Information")
-                part_no = st.text_input("Part No.")
-                part_description = st.text_input("Part Description")
-                part_unit_weight = st.text_input("Part Unit Weight")
-                part_weight_unit = st.selectbox("Weight Unit", ["grams", "kg", "lbs", "oz"])
+            st.markdown("### Part Information")
+            part_no = st.text_input("Part No.")
+            part_description = st.text_input("Part Description")
+            part_unit_weight = st.text_input("Part Unit Weight")
+            part_weight_unit = st.selectbox("Weight Unit", ["grams", "kg", "lbs", "oz"])
                 
-                st.markdown("### Primary Packaging")
-                primary_type = st.text_input("Primary Packaging Type")
-                col1_p, col2_p, col3_p = st.columns(3)
-                with col1_p:
-                    primary_l = st.text_input("Length (mm)")
-                with col2_p:
-                    primary_w = st.text_input("Width (mm)")
-                with col3_p:
-                    primary_h = st.text_input("Height (mm)")
+            st.markdown("### Primary Packaging")
+            primary_type = st.text_input("Primary Packaging Type")
+            col1_p, col2_p, col3_p = st.columns(3)
+            with col1_p:
+                primary_l = st.text_input("Length (mm)")
+            with col2_p:
+                primary_w = st.text_input("Width (mm)")
+            with col3_p:
+                primary_h = st.text_input("Height (mm)")
                 
-                primary_qty = st.text_input("Quantity per Pack")
-                primary_empty_weight = st.text_input("Empty Weight")
-                primary_pack_weight = st.text_input("Pack Weight")
+            primary_qty = st.text_input("Quantity per Pack")
+            primary_empty_weight = st.text_input("Empty Weight")
+            primary_pack_weight = st.text_input("Pack Weight")
                 
-                st.markdown("### Secondary Packaging")
-                secondary_type = st.text_input("Secondary Packaging Type")
-                col1_s, col2_s, col3_s = st.columns(3)
-                with col1_s:
-                    secondary_l = st.text_input("Length (mm)", key="sec_l")
-                with col2_s:
-                    secondary_w = st.text_input("Width (mm)", key="sec_w")
-                with col3_s:
-                    secondary_h = st.text_input("Height (mm)", key="sec_h")
+            st.markdown("### Secondary Packaging")
+            secondary_type = st.text_input("Secondary Packaging Type")
+            col1_s, col2_s, col3_s = st.columns(3)
+            with col1_s:
+                secondary_l = st.text_input("Length (mm)", key="sec_l")
+            with col2_s:
+                secondary_w = st.text_input("Width (mm)", key="sec_w")
+            with col3_s:
+                secondary_h = st.text_input("Height (mm)", key="sec_h")
                 
-                secondary_qty = st.text_input("Quantity per Pack", key="sec_qty")
-                secondary_empty_weight = st.text_input("Empty Weight", key="sec_empty")
-                secondary_pack_weight = st.text_input("Pack Weight", key="sec_pack")
+            secondary_qty = st.text_input("Quantity per Pack", key="sec_qty")
+            secondary_empty_weight = st.text_input("Empty Weight", key="sec_empty")
+            secondary_pack_weight = st.text_input("Pack Weight", key="sec_pack")
                 
-                st.markdown("### Packaging Procedures")
-                procedure_steps = []
-                for i in range(1, 11):
-                    step = st.text_area(f"Step {i}", key=f"step_{i}")
-                    procedure_steps.append(step)
+            st.markdown("### Packaging Procedures")
+            procedure_steps = []
+            for i in range(1, 11):
+                step = st.text_area(f"Step {i}", key=f"step_{i}")
+                procedure_steps.append(step)
                 
-                st.markdown("### Approval")
-                issued_by = st.text_input("Issued By")
-                reviewed_by = st.text_input("Reviewed By")
-                approved_by = st.text_input("Approved By")
+            st.markdown("### Approval")
+            issued_by = st.text_input("Issued By")
+            reviewed_by = st.text_input("Reviewed By")
+            approved_by = st.text_input("Approved By")
                 
-                submitted = st.form_submit_button("Save Manual Data")
+            submitted = st.form_submit_button("Save Manual Data")
                 
-                if submitted:
-                    # Create data dictionary from manual input
-                    manual_data = {
-                        'Revision No.': revision_no,
-                        'Date': str(date),
-                        'Vendor Code': vendor_code,
-                        'Vendor Name': vendor_name,
-                        'Vendor Location': vendor_location,
-                        'Part No.': part_no,
-                        'Part Description': part_description,
-                        'Part Unit Weight': f"{part_unit_weight} {part_weight_unit}",
-                        'Primary Packaging Type': primary_type,
-                        'Primary L-mm': primary_l,
-                        'Primary W-mm': primary_w,
-                        'Primary H-mm': primary_h,
-                        'Primary Qty/Pack': primary_qty,
-                        'Primary Empty Weight': primary_empty_weight,
-                        'Primary Pack Weight': primary_pack_weight,
-                        'Secondary Packaging Type': secondary_type,
-                        'Secondary L-mm': secondary_l,
-                        'Secondary W-mm': secondary_w,
-                        'Secondary H-mm': secondary_h,
-                        'Secondary Qty/Pack': secondary_qty,
-                        'Secondary Empty Weight': secondary_empty_weight,
-                        'Secondary Pack Weight': secondary_pack_weight,
-                        'Issued By': issued_by,
-                        'Reviewed By': reviewed_by,
-                        'Approved By': approved_by
-                    }
+            if submitted:
+                # Create data dictionary from manual input
+                manual_data = {
+                    'Revision No.': revision_no,
+                    'Date': str(date),
+                    'Vendor Code': vendor_code,
+                    'Vendor Name': vendor_name,
+                    'Vendor Location': vendor_location,
+                    'Part No.': part_no,
+                    'Part Description': part_description,
+                    'Part Unit Weight': f"{part_unit_weight} {part_weight_unit}",
+                    'Primary Packaging Type': primary_type,
+                    'Primary L-mm': primary_l,
+                    'Primary W-mm': primary_w,
+                    'Primary H-mm': primary_h,
+                    'Primary Qty/Pack': primary_qty,
+                    'Primary Empty Weight': primary_empty_weight,
+                    'Primary Pack Weight': primary_pack_weight,
+                    'Secondary Packaging Type': secondary_type,
+                    'Secondary L-mm': secondary_l,
+                    'Secondary W-mm': secondary_w,
+                    'Secondary H-mm': secondary_h,
+                    'Secondary Qty/Pack': secondary_qty,
+                    'Secondary Empty Weight': secondary_empty_weight,
+                    'Secondary Pack Weight': secondary_pack_weight,
+                    'Issued By': issued_by,
+                    'Reviewed By': reviewed_by,
+                    'Approved By': approved_by
+                }
                     
-                    # Add procedure steps
-                    for i, step in enumerate(procedure_steps, 1):
-                        manual_data[f'Procedure Step {i}'] = step
+                # Add procedure steps
+                for i, step in enumerate(procedure_steps, 1):
+                    manual_data[f'Procedure Step {i}'] = step
                     
-                    st.session_state.manual_data = manual_data
-                    st.success("✅ Manual data saved successfully!")
+                st.session_state.manual_data = manual_data
+                st.success("✅ Manual data saved successfully!")
     
     with col2:
         st.subheader("🖼️ Current Packaging Images")
