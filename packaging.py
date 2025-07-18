@@ -103,22 +103,22 @@ class ExactPackagingTemplateManager:
         header_font = Font(bold=True)
         
         # Set column widths to match the image exactly
-        ws.column_dimensions['A'].width = 12
-        ws.column_dimensions['B'].width = 10
-        ws.column_dimensions['C'].width = 10
-        ws.column_dimensions['D'].width = 10
-        ws.column_dimensions['E'].width = 10
-        ws.column_dimensions['F'].width = 11
-        ws.column_dimensions['G'].width = 10
-        ws.column_dimensions['H'].width = 10
-        ws.column_dimensions['I'].width = 10
-        ws.column_dimensions['J'].width = 10
-        ws.column_dimensions['K'].width = 10
+        ws.column_dimensions['A'].width = 14
+        ws.column_dimensions['B'].width = 12
+        ws.column_dimensions['C'].width = 12
+        ws.column_dimensions['D'].width = 12
+        ws.column_dimensions['E'].width = 12
+        ws.column_dimensions['F'].width = 12
+        ws.column_dimensions['G'].width = 12
+        ws.column_dimensions['H'].width = 12
+        ws.column_dimensions['I'].width = 12
+        ws.column_dimensions['J'].width = 12
+        ws.column_dimensions['K'].width = 12
         ws.column_dimensions['L'].width = 18
 
         # Set row heights
         for row in range(1, 51):
-            ws.row_dimensions[row].height = 20
+            ws.row_dimensions[row].height = 16
 
         # Header Row - "Packaging Instruction"
         ws.merge_cells('A1:K1')
