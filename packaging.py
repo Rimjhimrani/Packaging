@@ -129,40 +129,26 @@ class ExactPackagingTemplateManager:
         ws['B2'].border = border
         ws['C2'].border = border
         
-        ws['D2'] = "Date"
+        # D2 and E2 are left blank (styled but no value)
+        ws['D2'] = ""
         ws['D2'].border = border
-        ws['D2'].alignment = left_alignment
-        ws['D2'].font = regular_font
-        
-        ws.merge_cells('E2:F2')
+
         ws['E2'] = ""
         ws['E2'].border = border
+
+        # F2 contains "Date" label
+        ws['F2'] = "Date"
         ws['F2'].border = border
-        
-        ws['G2'] = "QC"
-        ws['G2'].border = border
-        ws['G2'].alignment = left_alignment
-        ws['G2'].font = regular_font
-        
-        ws['H2'] = ""
-        ws['H2'].border = border
-        
-        ws['I2'] = "MM"
-        ws['I2'].border = border
-        ws['I2'].alignment = left_alignment
-        ws['I2'].font = regular_font
-        
-        ws['J2'] = ""
-        ws['J2'].border = border
+        ws['F2'].alignment = left_alignment
+        ws['F2'].font = regular_font
+
+        # Other columns (G2 to K2) left blank but styled
+        for col in ['G2', 'H2', 'I2', 'J2']:
+            ws[col] = ""
+            ws[col].border = border
         
         ws['K2'] = ""
         ws['K2'].border = border
-        
-        # VP field - separate row
-        ws['A3'] = "VP"
-        ws['A3'].border = border
-        ws['A3'].alignment = left_alignment
-        ws['A3'].font = regular_font
         
         ws.merge_cells('B3:C3')
         ws['B3'] = ""
