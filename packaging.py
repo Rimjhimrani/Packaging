@@ -337,7 +337,7 @@ class ExactPackagingTemplateManager:
                 ws[f'{col}{row}'].border = border
         
         # TOTAL row for secondary
-        ws['D17] = "TOTAL"
+        ws['D17'] = "TOTAL"
         ws['D17'].border = border
         ws['D17'].font = black_font
         ws['D17'].alignment = center_alignment
