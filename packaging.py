@@ -381,7 +381,7 @@ class ExactPackagingTemplateManager:
         ws['A18'].border = border
         ws['A18'].alignment = center_alignment
         
-        # Packaging procedure steps (rows 19-28)
+        # Packaging procedure steps (rows 19-28) - WITH MERGED CELLS
         for i in range(1, 11):
             row = 18 + i
             ws[f'A{row}'] = str(i)
@@ -389,8 +389,14 @@ class ExactPackagingTemplateManager:
             ws[f'A{row}'].alignment = center_alignment
             ws[f'A{row}'].font = regular_font
             
-            for col in ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
-                ws[f'{col}{row}'] = ""
+            # MERGE CELLS B to J for each procedure step
+            ws.merge_cells(f'B{row}:J{row}')
+            ws[f'B{row}'] = ""
+            ws[f'B{row}'].border = border
+            ws[f'B{row}'].alignment = left_alignment
+            
+            # Add borders to all merged cells
+            for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
                 ws[f'{col}{row}'].border = border
         
         # Current packaging section for procedure
@@ -465,6 +471,49 @@ class ExactPackagingTemplateManager:
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
         
+        # Current packaging image section (NEW)
+        ws['K29'] = "CURRENT PACKAGING IMAGES"
+        ws['K29'].fill = blue_fill
+        ws['K29'].font = white_font
+        ws['K29'].border = border
+        ws['K29'].alignment = center_alignment
+        
+        # Current packaging image area
+        ws['K30'] = "Primary"
+        ws['K30'].border = border
+        ws['K30'].alignment = center_alignment
+        ws['K30'].font = regular_font
+        
+        ws['K31'] = "Image"
+        ws['K31'].border = border
+        ws['K31'].alignment = center_alignment
+        ws['K31'].font = regular_font
+        
+        ws['K32'] = "Secondary"
+        ws['K32'].border = border
+        ws['K32'].alignment = center_alignment
+        ws['K32'].font = regular_font
+        
+        ws['K33'] = "Image"
+        ws['K33'].border = border
+        ws['K33'].alignment = center_alignment
+        ws['K33'].font = regular_font
+        
+        ws['K34'] = "Label"
+        ws['K34'].border = border
+        ws['K34'].alignment = center_alignment
+        ws['K34'].font = regular_font
+        
+        ws['K35'] = "Image"
+        ws['K35'].border = border
+        ws['K35'].alignment = center_alignment
+        ws['K35'].font = regular_font
+        
+        ws['K36'] = "Process"
+        ws['K36'].border = border
+        ws['K36'].alignment = center_alignment
+        ws['K36'].font = regular_font
+        
         # Approval section headers
         ws.merge_cells('A37:C37')
         ws['A37'] = "Issued By"
@@ -501,6 +550,16 @@ class ExactPackagingTemplateManager:
         for row in range(38, 42):
             for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
                 ws[f'{col}{row}'].border = border
+        
+        # Current packaging approval section
+        ws['K37'] = "Current Packaging"
+        ws['K37'].border = border
+        ws['K37'].alignment = center_alignment
+        ws['K37'].font = regular_font
+        
+        for row in range(38, 42):
+            ws[f'K{row}'] = ""
+            ws[f'K{row}'].border = border
         
         return wb
     
@@ -597,7 +656,7 @@ class ExactPackagingTemplateManager:
             'Approved By': 'H38'
         }
         
-        # Fill procedure steps
+        # Fill procedure steps in merged cells
         for i in range(1, 11):
             key = f'Procedure Step {i}'
             if key in data_dict and data_dict[key]:
@@ -609,12 +668,46 @@ class ExactPackagingTemplateManager:
                 ws[cell_pos] = data_dict[key]
         
         return template_wb
+    
+    def add_current_packaging_images(self, template_wb, images_dict):
+        """Add current packaging images to the template"""
+        ws = template_wb.active
+        
+        try:
+            # Add primary packaging image
+            if 'current_primary' in images_dict:
+                img_data = images_dict['current_primary']
+                img = Image(io.BytesIO(img_data))
+                img.width = 100
+                img.height = 80
+                ws.add_image(img, 'K30')
+            
+            # Add secondary packaging image  
+            if 'current_secondary' in images_dict:
+                img_data = images_dict['current_secondary']
+                img = Image(io.BytesIO(img_data))
+                img.width = 100
+                img.height = 80
+                ws.add_image(img, 'K32')
+            
+            # Add label image
+            if 'current_label' in images_dict:
+                img_data = images_dict['current_label']
+                img = Image(io.BytesIO(img_data))
+                img.width = 100
+                img.height = 80
+                ws.add_image(img, 'K34')
+                
+        except Exception as e:
+            st.warning(f"Could not add images to template: {str(e)}")
+        
+        return template_wb
 
 def main():
     st.set_page_config(page_title="Exact Packaging Instruction Template", layout="wide")
     
     st.title("📦 Exact Packaging Instruction Template Manager")
-    st.markdown("Create and fill the exact packaging instruction template with data and image extraction.")
+    st.markdown("Create and fill the exact packaging instruction template with proper merged cells and current packaging image upload.")
     
     # Initialize the template manager
     template_manager = ExactPackagingTemplateManager()
@@ -642,7 +735,7 @@ def main():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("📋 Data Input & Image Extraction")
+        st.subheader("📋 Data Input & Image Management")
         
         # Option to upload CSV/Excel with data
         uploaded_file = st.file_uploader(
@@ -685,285 +778,188 @@ def main():
                     st.download_button(
                         label="📤 Download Filled Template",
                         data=output.getvalue(),
-                        file_name="filled_exact_packaging_instruction.xlsx",
+                        file_name="filled_packaging_instruction_template.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
-                    
-                    st.success("✅ Template filled successfully!")
-                    
+                    st.success("✅ Filled template ready for download!")
+            
             except Exception as e:
                 st.error(f"❌ Error processing file: {str(e)}")
-        
-        # Manual image upload section
-        st.subheader("🖼️ Manual Image Upload")
-        
-        col_img1, col_img2, col_img3 = st.columns(3)
-        
-        with col_img1:
-            st.write("**Primary Packaging Image**")
-            primary_image = st.file_uploader("Upload Primary", type=['png', 'jpg', 'jpeg'], key="primary")
-            if primary_image:
-                st.image(primary_image, caption="Primary Packaging", width=150)
-        
-        with col_img2:
-            st.write("**Secondary Packaging Image**")
-            secondary_image = st.file_uploader("Upload Secondary", type=['png', 'jpg', 'jpeg'], key="secondary")
-            if secondary_image:
-                st.image(secondary_image, caption="Secondary Packaging", width=150)
-        
-        with col_img3:
-            st.write("**Label Image**")
-            label_image = st.file_uploader("Upload Label", type=['png', 'jpg', 'jpeg'], key="label")
-            if label_image:
-                st.image(label_image, caption="Label", width=150)
-        
-        # Manual data entry form
-        st.subheader("✏️ Manual Data Entry")
-        with st.expander("Enter data manually"):
-            manual_data = {}
-            
-            # Header Information
-            st.write("**Header Information**")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                manual_data['Revision No.'] = st.text_input("Revision No.", key="rev_no")
-                manual_data['QC'] = st.text_input("QC", key="qc")
-                manual_data['VP'] = st.text_input("VP", key="vp")
-            with col_b:
-                manual_data['Date'] = st.text_input("Date", key="date")
-                manual_data['MM'] = st.text_input("MM", key="mm")
-            
-            # Vendor Information
-            st.write("**Vendor Information**")
-            manual_data['Vendor Code'] = st.text_input("Vendor Code", key="vendor_code")
-            manual_data['Vendor Name'] = st.text_input("Vendor Name", key="vendor_name")
-            manual_data['Vendor Location'] = st.text_input("Vendor Location", key="vendor_location")
-            
-            # Part Information
-            st.write("**Part Information**")
-            manual_data['Part No.'] = st.text_input("Part No.", key="part_no")
-            manual_data['Part Description'] = st.text_input("Part Description", key="part_desc")
-            manual_data['Part Unit Weight'] = st.text_input("Part Unit Weight", key="part_weight")
-            
-            # Primary Packaging
-            st.write("**Primary Packaging**")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                manual_data['Primary Packaging Type'] = st.text_input("Primary Packaging Type", key="primary_type")
-                manual_data['Primary L-mm'] = st.text_input("Primary L-mm", key="primary_l")
-                manual_data['Primary W-mm'] = st.text_input("Primary W-mm", key="primary_w")
-            with col_b:
-                manual_data['Primary H-mm'] = st.text_input("Primary H-mm", key="primary_h")
-                manual_data['Primary Qty/Pack'] = st.text_input("Primary Qty/Pack", key="primary_qty")
-                manual_data['Primary Empty Weight'] = st.text_input("Primary Empty Weight", key="primary_empty")
-                manual_data['Primary Pack Weight'] = st.text_input("Primary Pack Weight", key="primary_pack")
-            
-            # Secondary Packaging
-            st.write("**Secondary Packaging**")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                manual_data['Secondary Packaging Type'] = st.text_input("Secondary Packaging Type", key="secondary_type")
-                manual_data['Secondary L-mm'] = st.text_input("Secondary L-mm", key="secondary_l")
-                manual_data['Secondary W-mm'] = st.text_input("Secondary W-mm", key="secondary_w")
-            with col_b:
-                manual_data['Secondary H-mm'] = st.text_input("Secondary H-mm", key="secondary_h")
-                manual_data['Secondary Qty/Pack'] = st.text_input("Secondary Qty/Pack", key="secondary_qty")
-                manual_data['Secondary Empty Weight'] = st.text_input("Secondary Empty Weight", key="secondary_empty")
-                manual_data['Secondary Pack Weight'] = st.text_input("Secondary Pack Weight", key="secondary_pack")
-            
-            # Packaging Procedures
-            st.write("**Packaging Procedures (10 Steps)**")
-            for i in range(1, 11):
-                manual_data[f'Procedure Step {i}'] = st.text_area(f"Step {i}", key=f"step_{i}", height=50)
-            
-            # Approval
-            st.write("**Approval**")
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                manual_data['Issued By'] = st.text_input("Issued By", key="issued_by")
-            with col_b:
-                manual_data['Reviewed By'] = st.text_input("Reviewed By", key="reviewed_by")
-            with col_c:
-                manual_data['Approved By'] = st.text_input("Approved By", key="approved_by")
-            
-            # Generate template with manual data
-            if st.button("🔄 Generate Template with Manual Data"):
-                wb = template_manager.create_exact_template_excel()
-                filled_wb = template_manager.fill_template_with_data(wb, manual_data)
-                
-                output = io.BytesIO()
-                filled_wb.save(output)
-                output.seek(0)
-                
-                st.download_button(
-                    label="📤 Download Manually Filled Template",
-                    data=output.getvalue(),
-                    file_name="manual_filled_packaging_instruction.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                
-                st.success("✅ Template created with manual data!")
     
     with col2:
-        st.subheader("📋 Template Preview & Information")
+        st.subheader("🖼️ Current Packaging Images")
         
-        # Show template structure
-        st.write("**Template Structure:**")
-        st.info("""
-        📊 **Exact Packaging Instruction Template includes:**
+        # Current packaging images upload
+        st.markdown("Upload current packaging images to add to the template:")
         
-        **Header Section:**
-        - Revision No., Date, QC, MM, VP fields
+        current_primary = st.file_uploader(
+            "Current Primary Packaging Image", 
+            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+            key="current_primary"
+        )
         
-        **Information Sections:**
-        - Vendor Information (Code, Name, Location)
-        - Part Information (Part No., Description, Unit Weight)
+        current_secondary = st.file_uploader(
+            "Current Secondary Packaging Image", 
+            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+            key="current_secondary"
+        )
         
-        **Packaging Sections:**
-        - Primary Packaging Instruction (Type, Dimensions, Weight)
-        - Secondary Packaging Instruction (Type, Dimensions, Weight)
+        current_label = st.file_uploader(
+            "Current Label Image", 
+            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+            key="current_label"
+        )
         
-        **Procedure Section:**
-        - 10 detailed packaging procedure steps
+        # Preview uploaded images
+        images_dict = {}
         
-        **Visual Section:**
-        - Reference images for Primary, Secondary, and Label
-        - Visual flow with arrows
+        if current_primary:
+            st.image(current_primary, caption="Current Primary Packaging", width=200)
+            images_dict['current_primary'] = current_primary.getvalue()
         
-        **Approval Section:**
-        - Issued By, Reviewed By, Approved By signature boxes
+        if current_secondary:
+            st.image(current_secondary, caption="Current Secondary Packaging", width=200)
+            images_dict['current_secondary'] = current_secondary.getvalue()
         
-        **Additional Features:**
-        - Current Packaging comparison column
-        - Problem identification section
-        - Caution alerts for revised designs
-        """)
+        if current_label:
+            st.image(current_label, caption="Current Label", width=200)
+            images_dict['current_label'] = current_label.getvalue()
         
-        # Show field mapping
-        with st.expander("📋 Field Mapping Guide"):
-            st.write("**CSV/Excel Column Headers should match exactly:**")
+        # Generate template with images
+        if images_dict and st.button("🔄 Generate Template with Images"):
+            wb = template_manager.create_exact_template_excel()
+            wb_with_images = template_manager.add_current_packaging_images(wb, images_dict)
             
-            field_categories = {
-                "Header Fields": [
-                    "Revision No.", "Date", "QC", "MM", "VP"
-                ],
-                "Vendor Fields": [
-                    "Vendor Code", "Vendor Name", "Vendor Location"
-                ],
-                "Part Fields": [
-                    "Part No.", "Part Description", "Part Unit Weight", "Part Weight Unit"
-                ],
-                "Primary Packaging Fields": [
-                    "Primary Packaging Type", "Primary L-mm", "Primary W-mm", 
-                    "Primary H-mm", "Primary Qty/Pack", "Primary Empty Weight", 
-                    "Primary Pack Weight"
-                ],
-                "Secondary Packaging Fields": [
-                    "Secondary Packaging Type", "Secondary L-mm", "Secondary W-mm", 
-                    "Secondary H-mm", "Secondary Qty/Pack", "Secondary Empty Weight", 
-                    "Secondary Pack Weight"
-                ],
-                "Procedure Fields": [
-                    f"Procedure Step {i}" for i in range(1, 11)
-                ],
-                "Approval Fields": [
-                    "Issued By", "Reviewed By", "Approved By"
-                ]
-            }
-            
-            for category, fields in field_categories.items():
-                st.write(f"**{category}:**")
-                for field in fields:
-                    st.write(f"  • {field}")
-        
-        # Usage instructions
-        with st.expander("📖 Usage Instructions"):
-            st.markdown("""
-            **How to use this template manager:**
-            
-            1. **Download Empty Template**: Click the button in the sidebar to get the base template
-            
-            2. **Upload Data File**: 
-               - Upload CSV or Excel file with your data
-               - Column headers must match the field names exactly
-               - Images in Excel files will be automatically extracted
-            
-            3. **Manual Entry**: 
-               - Fill in data manually using the form
-               - All fields are optional
-            
-            4. **Generate Template**: 
-               - Click generate to create filled template
-               - Download the completed file
-            
-            5. **Image Handling**:
-               - Upload images manually or include in Excel file
-               - Supports PNG, JPG, JPEG formats
-               - Images will be positioned in appropriate sections
-            
-            **Tips:**
-            - Keep field names consistent with the mapping guide
-            - Use the preview to understand the template structure
-            - Test with sample data first
-            """)
-        
-        # Sample data download
-        if st.button("📥 Download Sample Data File"):
-            # Create sample data
-            sample_data = {
-                'Revision No.': ['Rev-001'],
-                'Date': ['2024-01-15'],
-                'QC': ['John Doe'],
-                'MM': ['Jane Smith'],
-                'VP': ['Mike Johnson'],
-                'Vendor Code': ['VEN-001'],
-                'Vendor Name': ['ABC Packaging Solutions'],
-                'Vendor Location': ['Mumbai, India'],
-                'Part No.': ['PART-12345'],
-                'Part Description': ['Electronic Component Housing'],
-                'Part Unit Weight': ['150'],
-                'Primary Packaging Type': ['Anti-static bag'],
-                'Primary L-mm': ['200'],
-                'Primary W-mm': ['150'],
-                'Primary H-mm': ['50'],
-                'Primary Qty/Pack': ['1'],
-                'Primary Empty Weight': ['5'],
-                'Primary Pack Weight': ['155'],
-                'Secondary Packaging Type': ['Cardboard box'],
-                'Secondary L-mm': ['250'],
-                'Secondary W-mm': ['200'],
-                'Secondary H-mm': ['100'],
-                'Secondary Qty/Pack': ['10'],
-                'Secondary Empty Weight': ['50'],
-                'Secondary Pack Weight': ['1600'],
-                'Procedure Step 1': ['Remove part from manufacturing line'],
-                'Procedure Step 2': ['Inspect part for defects'],
-                'Procedure Step 3': ['Place part in anti-static bag'],
-                'Procedure Step 4': ['Seal the anti-static bag'],
-                'Procedure Step 5': ['Place sealed bag in primary packaging'],
-                'Procedure Step 6': ['Add padding if necessary'],
-                'Procedure Step 7': ['Close primary packaging'],
-                'Procedure Step 8': ['Place multiple primary packages in secondary box'],
-                'Procedure Step 9': ['Add secondary padding and protection'],
-                'Procedure Step 10': ['Seal secondary packaging and apply labels'],
-                'Issued By': ['Production Manager'],
-                'Reviewed By': ['Quality Manager'],
-                'Approved By': ['Operations Director']
-            }
-            
-            sample_df = pd.DataFrame(sample_data)
-            csv_buffer = io.StringIO()
-            sample_df.to_csv(csv_buffer, index=False)
-            csv_buffer.seek(0)
+            output = io.BytesIO()
+            wb_with_images.save(output)
+            output.seek(0)
             
             st.download_button(
-                label="📤 Download Sample CSV",
-                data=csv_buffer.getvalue(),
-                file_name="sample_packaging_data.csv",
-                mime="text/csv"
+                label="📤 Download Template with Images",
+                data=output.getvalue(),
+                file_name="packaging_instruction_with_images.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+            st.success("✅ Template with images ready for download!")
+    
+    # Manual data entry section
+    st.subheader("✍️ Manual Data Entry")
+    
+    with st.expander("📝 Enter Data Manually"):
+        # Create tabs for different sections
+        tab1, tab2, tab3, tab4 = st.tabs(["Header Info", "Vendor & Part Info", "Packaging Info", "Procedure Steps"])
+        
+        manual_data = {}
+        
+        with tab1:
+            st.subheader("Header Information")
+            col1, col2 = st.columns(2)
             
-            st.success("✅ Sample data file ready for download!")
+            with col1:
+                manual_data['Revision No.'] = st.text_input("Revision No.")
+                manual_data['Date'] = st.text_input("Date")
+                manual_data['QC'] = st.text_input("QC")
+            
+            with col2:
+                manual_data['MM'] = st.text_input("MM")
+                manual_data['VP'] = st.text_input("VP")
+        
+        with tab2:
+            st.subheader("Vendor Information")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                manual_data['Vendor Code'] = st.text_input("Vendor Code")
+                manual_data['Vendor Name'] = st.text_input("Vendor Name")
+                manual_data['Vendor Location'] = st.text_input("Vendor Location")
+            
+            with col2:
+                st.subheader("Part Information")
+                manual_data['Part No.'] = st.text_input("Part No.")
+                manual_data['Part Description'] = st.text_area("Part Description", height=100)
+                manual_data['Part Unit Weight'] = st.text_input("Part Unit Weight")
+        
+        with tab3:
+            st.subheader("Primary Packaging")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                manual_data['Primary Packaging Type'] = st.text_input("Primary Packaging Type")
+                manual_data['Primary L-mm'] = st.text_input("Primary L-mm")
+                manual_data['Primary W-mm'] = st.text_input("Primary W-mm")
+                manual_data['Primary H-mm'] = st.text_input("Primary H-mm")
+            
+            with col2:
+                manual_data['Primary Qty/Pack'] = st.text_input("Primary Qty/Pack")
+                manual_data['Primary Empty Weight'] = st.text_input("Primary Empty Weight")
+                manual_data['Primary Pack Weight'] = st.text_input("Primary Pack Weight")
+            
+            st.subheader("Secondary Packaging")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                manual_data['Secondary Packaging Type'] = st.text_input("Secondary Packaging Type")
+                manual_data['Secondary L-mm'] = st.text_input("Secondary L-mm")
+                manual_data['Secondary W-mm'] = st.text_input("Secondary W-mm")
+                manual_data['Secondary H-mm'] = st.text_input("Secondary H-mm")
+            
+            with col2:
+                manual_data['Secondary Qty/Pack'] = st.text_input("Secondary Qty/Pack")
+                manual_data['Secondary Empty Weight'] = st.text_input("Secondary Empty Weight")
+                manual_data['Secondary Pack Weight'] = st.text_input("Secondary Pack Weight")
+        
+        with tab4:
+            st.subheader("Packaging Procedure Steps")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                for i in range(1, 6):
+                    manual_data[f'Procedure Step {i}'] = st.text_area(f"Step {i}", height=80, key=f"step_{i}")
+            
+            with col2:
+                for i in range(6, 11):
+                    manual_data[f'Procedure Step {i}'] = st.text_area(f"Step {i}", height=80, key=f"step_{i}")
+            
+            st.subheader("Approval")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                manual_data['Issued By'] = st.text_input("Issued By")
+            
+            with col2:
+                manual_data['Reviewed By'] = st.text_input("Reviewed By")
+            
+            with col3:
+                manual_data['Approved By'] = st.text_input("Approved By")
+        
+        # Generate template with manual data
+        if st.button("🔄 Generate Template with Manual Data"):
+            wb = template_manager.create_exact_template_excel()
+            filled_wb = template_manager.fill_template_with_data(wb, manual_data)
+            
+            # Add images if uploaded
+            if images_dict:
+                filled_wb = template_manager.add_current_packaging_images(filled_wb, images_dict)
+            
+            output = io.BytesIO()
+            filled_wb.save(output)
+            output.seek(0)
+            
+            st.download_button(
+                label="📤 Download Template with Manual Data",
+                data=output.getvalue(),
+                file_name="manual_packaging_instruction_template.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            st.success("✅ Template with manual data ready for download!")
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("💡 **Tips:**")
+    st.markdown("- Upload a CSV/Excel file with data to auto-fill the template")
+    st.markdown("- Upload current packaging images to add them to the template")
+    st.markdown("- Use manual data entry for custom entries")
+    st.markdown("- The template matches the exact format with proper merged cells")
 
 if __name__ == "__main__":
     main()
