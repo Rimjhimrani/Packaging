@@ -667,8 +667,10 @@ class ExactPackagingTemplateManager:
         # Fill other mapped cells
         for key, cell_pos in cell_mapping.items():
             if key in data_dict and data_dict[key]:
-                ws[cell_pos] = data_dict[key]
-        
+                cell = ws[cell_pos]
+                if not isinstance(cell, MergedCell):  # Skip merged "proxy" cells
+                    cell.value = data_dict[key]
+                    
         return template_wb
     
     def add_current_packaging_images(self, template_wb, images_dict):
