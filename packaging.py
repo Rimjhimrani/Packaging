@@ -299,10 +299,10 @@ class ExactPackagingTemplateManager:
                 ws[f'{col}{row}'].border = border
         
         # TOTAL row
-        ws['H12'] = "TOTAL"
-        ws['H12'].border = border
-        ws['H12'].font = black_font
-        ws['H12'].alignment = center_alignment
+        ws['D12'] = "TOTAL"
+        ws['D12'].border = border
+        ws['D12'].font = black_font
+        ws['D12'].alignment = center_alignment
         
         # Current packaging section rows 9-12
         for row in range(9, 13):
@@ -337,7 +337,7 @@ class ExactPackagingTemplateManager:
                 ws[f'{col}{row}'].border = border
         
         # TOTAL row for secondary
-        ws['D17'] = "TOTAL"
+        ws['D17] = "TOTAL"
         ws['D17'].border = border
         ws['D17'].font = black_font
         ws['D17'].alignment = center_alignment
