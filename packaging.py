@@ -337,27 +337,27 @@ class ExactPackagingTemplateManager:
                 ws[f'{col}{row}'].border = border
         
         # TOTAL row for secondary
-        ws['H17'] = "TOTAL"
-        ws['H17'].border = border
-        ws['H17'].font = black_font
-        ws['H17'].alignment = center_alignment
+        ws['D17'] = "TOTAL"
+        ws['D17'].border = border
+        ws['D17'].font = black_font
+        ws['D17'].alignment = center_alignment
         
         # Problem section (right side)
-        ws['K13'] = "PROBLEM IF ANY:"
-        ws['K13'].border = border
-        ws['K13'].font = black_font
-        ws['K13'].alignment = left_alignment
+        ws['K9'] = "PROBLEM IF ANY:"
+        ws['K9'].border = border
+        ws['K9'].font = black_font
+        ws['K9'].alignment = left_alignment
         
         for row in range(14, 18):
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
         
         # Red caution section
-        ws['K18'] = "CAUTION: REVISED DESIGN"
-        ws['K18'].fill = red_fill
-        ws['K18'].font = white_font
-        ws['K18'].border = border
-        ws['K18'].alignment = center_alignment
+        ws['K10'] = "CAUTION: REVISED DESIGN"
+        ws['K10'].fill = red_fill
+        ws['K10'].font = white_font
+        ws['K10'].border = border
+        ws['K10'].alignment = center_alignment
         
         # Packaging Procedure section
         ws.merge_cells('A18:J18')
@@ -456,97 +456,84 @@ class ExactPackagingTemplateManager:
         for row in range(29, 37):
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
-        
-        # Current packaging image section (NEW)
-        ws['K29'] = "CURRENT PACKAGING IMAGES"
-        ws['K29'].fill = blue_fill
-        ws['K29'].font = white_font
-        ws['K29'].border = border
-        ws['K29'].alignment = center_alignment
-        
-        # Current packaging image area
-        ws['K30'] = "Primary"
-        ws['K30'].border = border
-        ws['K30'].alignment = center_alignment
-        ws['K30'].font = regular_font
-        
-        ws['K31'] = "Image"
-        ws['K31'].border = border
-        ws['K31'].alignment = center_alignment
-        ws['K31'].font = regular_font
-        
-        ws['K32'] = "Secondary"
-        ws['K32'].border = border
-        ws['K32'].alignment = center_alignment
-        ws['K32'].font = regular_font
-        
-        ws['K33'] = "Image"
-        ws['K33'].border = border
-        ws['K33'].alignment = center_alignment
-        ws['K33'].font = regular_font
-        
-        ws['K34'] = "Label"
-        ws['K34'].border = border
-        ws['K34'].alignment = center_alignment
-        ws['K34'].font = regular_font
-        
-        ws['K35'] = "Image"
-        ws['K35'].border = border
-        ws['K35'].alignment = center_alignment
-        ws['K35'].font = regular_font
-        
-        ws['K36'] = "Process"
-        ws['K36'].border = border
-        ws['K36'].alignment = center_alignment
-        ws['K36'].font = regular_font
-        
-        # Approval section headers
+        # === Original Approval Section ===
         ws.merge_cells('A37:C37')
         ws['A37'] = "Issued By"
         ws['A37'].border = border
         ws['A37'].alignment = center_alignment
         ws['A37'].font = regular_font
-        
+
         ws.merge_cells('D37:G37')
         ws['D37'] = "Reviewed By"
         ws['D37'].border = border
         ws['D37'].alignment = center_alignment
         ws['D37'].font = regular_font
-        
+
         ws.merge_cells('H37:J37')
         ws['H37'] = "Approved By"
         ws['H37'].border = border
         ws['H37'].alignment = center_alignment
         ws['H37'].font = regular_font
-        
-        # Signature boxes
+
         ws.merge_cells('A38:C41')
         ws['A38'] = ""
         ws['A38'].border = border
-        
+
         ws.merge_cells('D38:G41')
         ws['D38'] = ""
         ws['D38'].border = border
-        
+
         ws.merge_cells('H38:J41')
         ws['H38'] = ""
         ws['H38'].border = border
-        
-        # Add borders to all merged cells
+
+        # Apply borders for original section
         for row in range(38, 42):
             for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
                 ws[f'{col}{row}'].border = border
-        
-        # Current packaging approval section
-        ws['K37'] = "Current Packaging"
-        ws['K37'].border = border
-        ws['K37'].alignment = center_alignment
-        ws['K37'].font = regular_font
-        
         for row in range(38, 42):
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
-        
+        # === Duplicate Approval Section (below original) ===
+        start_row = 43
+        ws.merge_cells(f'A{start_row}:C{start_row}')
+        ws[f'A{start_row}'] = "Issued By"
+        ws[f'A{start_row}'].border = border
+        ws[f'A{start_row}'].alignment = center_alignment
+        ws[f'A{start_row}'].font = regular_font
+
+        ws.merge_cells(f'D{start_row}:G{start_row}')
+        ws[f'D{start_row}'] = "Reviewed By"
+        ws[f'D{start_row}'].border = border
+        ws[f'D{start_row}'].alignment = center_alignment
+        ws[f'D{start_row}'].font = regular_font
+
+        ws.merge_cells(f'H{start_row}:J{start_row}')
+        ws[f'H{start_row}'] = "Approved By"
+        ws[f'H{start_row}'].border = border
+        ws[f'H{start_row}'].alignment = center_alignment
+        ws[f'H{start_row}'].font = regular_font
+
+        # Signature boxes under duplicate section
+        ws.merge_cells(f'A{start_row+1}:C{start_row+4}')
+        ws[f'A{start_row+1}'] = ""
+        ws[f'A{start_row+1}'].border = border
+
+        ws.merge_cells(f'D{start_row+1}:G{start_row+4}')
+        ws[f'D{start_row+1}'] = ""
+        ws[f'D{start_row+1}'].border = border
+
+        ws.merge_cells(f'H{start_row+1}:J{start_row+4}')
+        ws[f'H{start_row+1}'] = ""
+        ws[f'H{start_row+1}'].border = border
+
+        # Apply borders for duplicated section
+        for row in range(start_row+1, start_row+5):
+            for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
+                ws[f'{col}{row}'].border = border
+            ws[f'K{row}'] = ""
+            ws[f'K{row}'].border = border
+        # Now you can return the workbook or continue processing
         return wb
     
     def extract_data_from_uploaded_file(self, uploaded_file):
