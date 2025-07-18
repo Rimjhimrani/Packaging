@@ -456,6 +456,7 @@ class ExactPackagingTemplateManager:
         for row in range(29, 37):
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
+            
         # === Original Approval Section ===
         ws.merge_cells('A37:C37')
         ws['A37'] = "Issued By"
@@ -475,27 +476,27 @@ class ExactPackagingTemplateManager:
         ws['H37'].alignment = center_alignment
         ws['H37'].font = regular_font
 
-        ws.merge_cells('A38:C41')
+        ws.merge_cells('A38:C39')
         ws['A38'] = ""
         ws['A38'].border = border
 
-        ws.merge_cells('D38:G41')
+        ws.merge_cells('D38:G39')
         ws['D38'] = ""
         ws['D38'].border = border
 
-        ws.merge_cells('H38:J41')
+        ws.merge_cells('H38:J39')
         ws['H38'] = ""
         ws['H38'].border = border
 
         # Apply borders for original section
-        for row in range(38, 42):
+        for row in range(38, 40):
             for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
                 ws[f'{col}{row}'].border = border
-        for row in range(38, 42):
+        for row in range(38, 40):
             ws[f'K{row}'] = ""
             ws[f'K{row}'].border = border
         # === Duplicate Approval Section (below original) ===
-        start_row = 43
+        start_row = 41
         ws.merge_cells(f'A{start_row}:C{start_row}')
         ws[f'A{start_row}'] = "Issued By"
         ws[f'A{start_row}'].border = border
