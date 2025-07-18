@@ -149,36 +149,10 @@ class ExactPackagingTemplateManager:
         ws['F2'].font = regular_font
 
         # G2-H2 merged for date value
-        ws.merge_cells('G2:H2')
+        ws.merge_cells('G2:J2')
         ws['G2'] = ""
         ws['G2'].border = border
         ws['H2'].border = border
-
-        # I2 contains "QC" label
-        ws['I2'] = "QC"
-        ws['I2'].border = border
-        ws['I2'].alignment = left_alignment
-        ws['I2'].font = regular_font
-
-        # J2 for QC value
-        ws['J2'] = ""
-        ws['J2'].border = border
-        
-        # K2 for MM label
-        ws['K2'] = "MM"
-        ws['K2'].border = border
-        ws['K2'].alignment = left_alignment
-        ws['K2'].font = regular_font
-        
-        # L2 for MM value
-        ws['L2'] = ""
-        ws['L2'].border = border
-
-        # Row 3 - VP information
-        ws['A3'] = "VP"
-        ws['A3'].border = border
-        ws['A3'].alignment = left_alignment
-        ws['A3'].font = regular_font
 
         ws.merge_cells('B3:C3')
         ws['B3'] = ""
@@ -412,7 +386,7 @@ class ExactPackagingTemplateManager:
             ws[f'{col}16'].border = border
 
         # Secondary Packaging Instruction header (Row 17)
-        ws.merge_cells('A17:J17')
+        ws.merge_cells('A17:K17')
         ws['A17'] = "Secondary Packaging Instruction (Outer / External)"
         ws['A17'].fill = blue_fill
         ws['A17'].font = white_font
@@ -422,10 +396,10 @@ class ExactPackagingTemplateManager:
         ws['K17'] = ""
         ws['K17'].border = border
 
-        ws['L17'] = "PROBLEM IF ANY:"
-        ws['L17'].border = border
-        ws['L17'].font = black_font
-        ws['L17'].alignment = left_alignment
+        ws['L12'] = "PROBLEM IF ANY:"
+        ws['L12'].border = border
+        ws['L12'].font = black_font
+        ws['L12'].alignment = left_alignment
 
         # Secondary packaging headers (Row 18)
         for i, header in enumerate(headers):
@@ -440,11 +414,11 @@ class ExactPackagingTemplateManager:
             ws[f'{col}18'] = ""
             ws[f'{col}18'].border = border
 
-        ws['L18'] = "CAUTION: REVISED DESIGN"
-        ws['L18'].fill = red_fill
-        ws['L18'].font = white_font
-        ws['L18'].border = border
-        ws['L18'].alignment = center_alignment
+        ws['L13'] = "CAUTION: REVISED DESIGN"
+        ws['L13'].fill = red_fill
+        ws['L13'].font = white_font
+        ws['L13'].border = border
+        ws['L13'].alignment = center_alignment
 
         # Secondary packaging data rows (19-21)
         for row in range(19, 22):
