@@ -136,10 +136,8 @@ class ExactPackagingTemplateManager:
         ws['A2'].font = regular_font
 
         ws.merge_cells('B2:C2')
-        ws['B2'] = ""
-        ws['B2'].border = border
-        ws['C2'].border = border
-
+        ws['B2'] = "Revision 1"  # ✅ Only set value here
+        
         # D2 and E2 are left blank (styled but no value)
         ws['D2'] = ""
         ws['D2'].border = border
