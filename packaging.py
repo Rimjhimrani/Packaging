@@ -114,7 +114,7 @@ class ExactPackagingTemplateManager:
         ws.column_dimensions['I'].width = 12
         ws.column_dimensions['J'].width = 12
         ws.column_dimensions['K'].width = 12
-        ws.column_dimensions['L'].width = 18
+        ws.column_dimensions['L'].width = 24
 
         # Set row heights
         for row in range(1, 51):
@@ -344,10 +344,10 @@ class ExactPackagingTemplateManager:
         ws['K14'] = ""
         ws['K14'].border = border
 
-        ws['L14'] = "PROBLEM IF ANY:"
-        ws['L14'].border = border
-        ws['L14'].font = black_font
-        ws['L14'].alignment = left_alignment
+        ws['L10'] = "PROBLEM IF ANY:"
+        ws['L10'].border = border
+        ws['L10'].font = black_font
+        ws['L10'].alignment = left_alignment
 
         # Secondary packaging headers
         for i, header in enumerate(headers):
@@ -362,11 +362,11 @@ class ExactPackagingTemplateManager:
             ws[f'{col}15'] = ""
             ws[f'{col}15'].border = border
 
-        ws['L15'] = "CAUTION: REVISED DESIGN"
-        ws['L15'].fill = red_fill
-        ws['L15'].font = white_font
-        ws['L15'].border = border
-        ws['L15'].alignment = center_alignment
+        ws['L11'] = "CAUTION: REVISED DESIGN"
+        ws['L11'].fill = red_fill
+        ws['L11'].font = white_font
+        ws['L11'].border = border
+        ws['L11'].alignment = center_alignment
 
         # Secondary packaging data rows (16-18)
         for row in range(16, 19):
