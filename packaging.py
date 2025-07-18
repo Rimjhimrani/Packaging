@@ -78,9 +78,9 @@ class ExactPackagingTemplateManager:
         blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
         light_blue_fill = PatternFill(start_color="D6EAF8", end_color="D6EAF8", fill_type="solid")
-        white_font = Font(color="FFFFFF", bold=True, size=10)
-        black_font = Font(color="000000", bold=True, size=10)
-        regular_font = Font(color="000000", size=9)
+        white_font = Font(color="FFFFFF", bold=True, size=12)
+        black_font = Font(color="000000", bold=True, size=14)
+        regular_font = Font(color="000000", size=12)
         border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                        top=Side(style='thin'), bottom=Side(style='thin'))
         center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -92,7 +92,7 @@ class ExactPackagingTemplateManager:
         ws.column_dimensions['C'].width = 10
         ws.column_dimensions['D'].width = 10
         ws.column_dimensions['E'].width = 10
-        ws.column_dimensions['F'].width = 10
+        ws.column_dimensions['F'].width = 11
         ws.column_dimensions['G'].width = 10
         ws.column_dimensions['H'].width = 10
         ws.column_dimensions['I'].width = 10
@@ -146,7 +146,6 @@ class ExactPackagingTemplateManager:
         for col in ['G2', 'H2', 'I2', 'J2']:
             ws[col] = ""
             ws[col].border = border
-
         ws['K2'] = ""
         ws['K2'].border = border
         ws['L2'] = ""
@@ -166,53 +165,82 @@ class ExactPackagingTemplateManager:
         for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']:
             ws[f'{col}4'] = ""
             ws[f'{col}4'].border = border
+            
+        # Vendor Information Title
+        ws.merge_cells('A4:D4')
+        ws['A4'] = "Vendor Information"
+        ws['A4'].font = title_font  # Define this font earlier (e.g., bold/size)
+        ws['A4'].alignment = center_alignment  # Define as centered horizontally
+        ws['A4'].border = border
 
+        # Part Information Title
+        ws.merge_cells('F4:I4')
+        ws['F4'] = "Part Information"
+        ws['F4'].font = title_font
+        ws['F4'].alignment = center_alignment
+        ws['F4'].border = border
+
+        # Vendor Code Row
+        ws['A5'] = "Code"
+        ws['A5'].font = header_font  # Define header_font if needed
+        ws['A5'].alignment = left_alignment
+        ws['A5'].border = border
+
+        ws.merge_cells('B5:D5')
+        ws['B5'] = ""  # Placeholder for value
+        ws['B5'].border = border
+        
         # Part fields
         ws['F5'] = "Part No."
         ws['F5'].border = border
         ws['F5'].alignment = left_alignment
         ws['F5'].font = regular_font
 
-        ws.merge_cells('G5:J5')
+        ws.merge_cells('G5:K5')
         ws['G5'] = ""
         ws['G5'].border = border
-        for col in ['H', 'I', 'J']:
+        for col in ['H', 'I', 'J','K']:
             ws[f'{col}5'].border = border
+        # Vendor Name Row
+        ws['A6'] = "Name"
+        ws['A6'].font = header_font
+        ws['A6'].alignment = left_alignment
+        ws['A6'].border = border
+
+        ws.merge_cells('B6:D6')
+        ws['B6'] = ""  # Placeholder for value
+        ws['B6'].border = border
 
         ws['F6'] = "Description"
         ws['F6'].border = border
         ws['F6'].alignment = left_alignment
         ws['F6'].font = regular_font
 
-        ws.merge_cells('G6:J6')
+        ws.merge_cells('G6:K6')
         ws['G6'] = ""
         ws['G6'].border = border
-        for col in ['H', 'I', 'J']:
+        for col in ['H', 'I', 'J','K']:
             ws[f'{col}6'].border = border
+        # Vendor Location Row
+        ws['A7'] = "Location"
+        ws['A7'].font = header_font
+        ws['A7'].alignment = left_alignment
+        ws['A7'].border = border
+
+        ws.merge_cells('B7:D7')
+        ws['B7'] = ""  # Placeholder for value
+        ws['B7'].border = border
 
         ws['F7'] = "Unit Weight"
         ws['F7'].border = border
         ws['F7'].alignment = left_alignment
         ws['F7'].font = regular_font
 
+        ws.merge_cells('G7:K7')
         ws['G7'] = ""
         ws['G7'].border = border
-
-        ws['H7'] = "W"
-        ws['H7'].border = border
-        ws['H7'].alignment = center_alignment
-        ws['H7'].font = regular_font
-
-        ws['I7'] = ""
-        ws['I7'].border = border
-
-        ws['J7'] = "L"
-        ws['J7'].border = border
-        ws['J7'].alignment = center_alignment
-        ws['J7'].font = regular_font
-
-        ws['K7'] = ""
-        ws['K7'].border = border
+        for col in ['H', 'I', 'J','K']:
+            ws[f'{col}6'].border = border
 
         # Current packaging section rows 5-7
         for row in range(5, 8):
@@ -236,7 +264,7 @@ class ExactPackagingTemplateManager:
         ws['I8'] = ""
         ws['I8'].border = border
 
-        ws['J8'] = ""
+        ws['J8'] = "H"
         ws['J8'].border = border
 
         ws['K8'] = ""
@@ -247,7 +275,7 @@ class ExactPackagingTemplateManager:
         ws['L8'].border = border
 
         # Title row after spacing
-        ws.merge_cells('A9:J9')
+        ws.merge_cells('A9:K9')
         ws['A9'] = "Primary Packaging Instruction (Primary / Internal)"
         ws['A9'].fill = blue_fill
         ws['A9'].font = white_font
@@ -333,7 +361,7 @@ class ExactPackagingTemplateManager:
         ws['D18'].alignment = center_alignment
 
         # Packaging Procedure section
-        ws.merge_cells('A19:J19')
+        ws.merge_cells('A19:K19')
         ws['A19'] = "Packaging Procedure"
         ws['A19'].fill = blue_fill
         ws['A19'].font = white_font
@@ -367,7 +395,7 @@ class ExactPackagingTemplateManager:
             ws[f'L{row}'] = ""
             ws[f'L{row}'].border = border
         # Reference Images/Pictures section
-        ws.merge_cells('A30:J30')
+        ws.merge_cells('A30:K30')
         ws['A30'] = "Reference Images/Pictures"
         ws['A30'].fill = blue_fill
         ws['A30'].font = white_font
@@ -429,7 +457,7 @@ class ExactPackagingTemplateManager:
         ws['G35'].font = Font(size=20, bold=True)
 
         # Label image area
-        ws.merge_cells('H32:J37')
+        ws.merge_cells('H32:K37')
         ws['H32'] = "LABEL"
         ws['H32'].border = border
         ws['H32'].alignment = center_alignment
@@ -452,7 +480,7 @@ class ExactPackagingTemplateManager:
         ws['D38'].alignment = center_alignment
         ws['D38'].font = regular_font
 
-        ws.merge_cells('H38:J38')
+        ws.merge_cells('H38:K38')
         ws['H38'] = "Approved By"
         ws['H38'].border = border
         ws['H38'].alignment = center_alignment
@@ -472,7 +500,7 @@ class ExactPackagingTemplateManager:
         ws['D39'] = ""
         ws['D39'].border = border
 
-        ws.merge_cells('H39:J42')
+        ws.merge_cells('H39:K42')
         ws['H39'] = ""
         ws['H39'].border = border
 
