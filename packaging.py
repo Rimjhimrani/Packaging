@@ -2,13 +2,14 @@ import pandas as pd
 import openpyxl
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
-from openpyxl.drawing.image import Image  # ✅ Corrected
+from openpyxl.drawing.image import Image  # ✅ fixed this line
 import io
 import base64
 from PIL import Image as PILImage
 import zipfile
 import os
 import tempfile
+import streamlit as st  # ✅ moved to its own line
 
 class ExactPackagingTemplateManager:
     def __init__(self):
