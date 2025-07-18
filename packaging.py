@@ -85,6 +85,16 @@ class ExactPackagingTemplateManager:
                        top=Side(style='thin'), bottom=Side(style='thin'))
         center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        title_font = Font(bold=True, size=12)
+        header_font = Font(bold=True)
+        center_alignment = Alignment(horizontal='center', vertical='center')
+        left_alignment = Alignment(horizontal='left', vertical='center')
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
         
         # Set column widths to match the image exactly
         ws.column_dimensions['A'].width = 12
