@@ -83,7 +83,36 @@ class AdvancedTemplateMapper:
             'to', 'was', 'will', 'with', 'or', 'but', 'not', 'this', 'have',
             'had', 'what', 'when', 'where', 'who', 'which', 'why', 'how'
         }
-        
+        self.section_mappings = {
+            'primary_packaging': {
+                'section_keywords': ['primary packaging instruction', 'primary', 'internal'],
+                'field_mappings': {
+                    'packaging type': 'Primary Packaging Type',
+                    'l-mm': 'Primary L-mm',
+                    'w-mm': 'Primary W-mm', 
+                    'h-mm': 'Primary H-mm',
+                    'qty/pack': 'Primary Qty/Pack'
+                }
+            },
+            'secondary_packaging': {
+                'section_keywords': ['secondary packaging instruction', 'secondary', 'outer', 'external'],
+                'field_mappings': {
+                    'packaging type': 'Secondary Packaging Type',
+                    'l-mm': 'Secondary L-mm',
+                    'w-mm': 'Secondary W-mm',
+                    'h-mm': 'Secondary H-mm', 
+                    'qty/pack': 'Secondary Qty/Pack'
+                }
+            },
+            'part_dimensions': {
+                'section_keywords': ['part', 'component', 'item'],
+                'field_mappings': {
+                    'l-mm': 'Part L',
+                    'w-mm': 'Part W',
+                    'h-mm': 'Part H'
+                }
+            }
+        }
         if ADVANCED_NLP:
             try:
                 self.stop_words = set(stopwords.words('english'))
