@@ -447,43 +447,79 @@ class AdvancedTemplateMapper:
         return mapping_results
     
     def find_data_cell_for_label(self, worksheet, field_info):
-        """Automatically find data cell for a label"""
+         """Automatically find data cell for a label (improved merged cell handling)"""
         try:
             row = field_info['row']
             col = field_info['column']
-            
-            # Look right of label
-            for offset in range(1, 5):
+            # Get merged ranges for reference
+            merged_ranges = list(worksheet.merged_cells.ranges)
+        
+            def is_suitable_data_cell(cell_coord):
+                """Check if a cell is suitable for data entry"""
+                try:
+                    cell = worksheet[cell_coord]
+                    # Skip MergedCell objects (they're read-only)
+                    if hasattr(cell, '__class__') and cell.__class__.__name__ == 'MergedCell':
+                        return False
+                    # Check if it's a data cell or empty
+                    if cell.value is None or self.is_data_cell(cell.value):
+                        return True
+                    return False
+                except:
+                    return False
+            # Strategy 1: Look right of label (most common pattern)
+            for offset in range(1, 6):
                 target_col = col + offset
                 if target_col <= worksheet.max_column:
-                    cell = worksheet.cell(row=row, column=target_col)
-                    if self.is_data_cell(cell.value):
-                        return cell.coordinate
-            
-            # Look below label
-            for offset in range(1, 3):
+                    cell_coord = worksheet.cell(row=row, column=target_col).coordinate
+                    if is_suitable_data_cell(cell_coord):
+                        return cell_coord
+            # Strategy 2: Look below label
+            for offset in range(1, 4):
                 target_row = row + offset
                 if target_row <= worksheet.max_row:
-                    cell = worksheet.cell(row=target_row, column=col)
-                    if self.is_data_cell(cell.value):
-                        return cell.coordinate
-            
-            # Look in nearby area
-            for r_offset in range(-1, 2):
-                for c_offset in range(-1, 4):
+                    cell_coord = worksheet.cell(row=target_row, column=col).coordinate
+                    if is_suitable_data_cell(cell_coord):
+                        return cell_coord
+            # Strategy 3: Look in nearby area (diagonal search)
+            for r_offset in range(-1, 3):
+                for c_offset in range(-1, 6):
                     if r_offset == 0 and c_offset == 0:
                         continue
-                        
                     target_row = row + r_offset
                     target_col = col + c_offset
-                    
+                
                     if (target_row > 0 and target_row <= worksheet.max_row and 
                         target_col > 0 and target_col <= worksheet.max_column):
+                            cell_coord = worksheet.cell(row=target_row, column=target_col).coordinate
+                            if is_suitable_data_cell(cell_coord):
+                                return cell_coord
+            # Strategy 4: If label is in a merged cell, try to find data cell in the same merged range
+            if field_info.get('merged_range'):
+                try:
+                    for merged_range in merged_ranges:
+                        label_coord = worksheet.cell(row=row, column=col).coordinate
+                        if label_coord in merged_range:
+                            # Look for empty cells within or adjacent to the merged range
+                            min_row, min_col, max_row, max_col = merged_range.bounds
                         
-                        cell = worksheet.cell(row=target_row, column=target_col)
-                        if self.is_data_cell(cell.value):
-                            return cell.coordinate
-            
+                            # Check cells within the merged range
+                            for r in range(min_row, max_row + 1):
+                                for c in range(min_col, max_col + 1):
+                                    cell_coord = worksheet.cell(row=r, column=c).coordinate
+                                    if is_suitable_data_cell(cell_coord):
+                                        return cell_coord
+                            # Check cells adjacent to the merged range
+                            for c in range(max_col + 1, max_col + 4):
+                                if c <= worksheet.max_column:
+                                    for r in range(min_row, max_row + 1):
+                                        cell_coord = worksheet.cell(row=r, column=c).coordinate
+                                        if is_suitable_data_cell(cell_coord):
+                                            return cell_coord
+                            break
+                        
+                except Exception as e:
+                    st.warning(f"Error processing merged range for {field_info.get('value', 'unknown')}: {e}")
             return None
             
         except Exception as e:
