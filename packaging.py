@@ -1,991 +1,941 @@
-import pandas as pd
-import openpyxl
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
-from openpyxl.drawing.image import Image
-from openpyxl.cell.cell import MergedCell
-import io
-import base64
-from PIL import Image as PILImage
-import zipfile
-import os
-import tempfile
 import streamlit as st
+import pandas as pd
+import numpy as np
+import os
+import json
+import hashlib
+from datetime import datetime
+from difflib import SequenceMatcher
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
+import re
+import io
+import tempfile
+import shutil
+from pathlib import Path
 
-class ExactPackagingTemplateManager:
+# Configure Streamlit page
+st.set_page_config(
+    page_title="AI Template Mapper",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Try to import optional dependencies
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize
+    from nltk.corpus import stopwords
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    ADVANCED_NLP = True
+    
+    # Download required NLTK data
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+        
+except ImportError:
+    ADVANCED_NLP = False
+    st.warning("⚠️ Advanced NLP features disabled. Install nltk and scikit-learn for better matching.")
+
+class AdvancedTemplateMapper:
     def __init__(self):
-        self.template_fields = {
-            # Header Information
-            'Revision No.': '',
-            'Date': '',
-            
-            # Vendor Information
-            'Vendor Code': '',
-            'Vendor Name': '',
-            'Vendor Location': '',
-            
-            # Part Information
-            'Part No.': '',
-            'Part Description': '',
-            'Part Unit Weight': '',
-            'Part Weight Unit': '',
-            
-            # Primary Packaging
-            'Primary Packaging Type': '',
-            'Primary L-mm': '',
-            'Primary W-mm': '',
-            'Primary H-mm': '',
-            'Primary Qty/Pack': '',
-            'Primary Empty Weight': '',
-            'Primary Pack Weight': '',
-            
-            # Secondary Packaging
-            'Secondary Packaging Type': '',
-            'Secondary L-mm': '',
-            'Secondary W-mm': '',
-            'Secondary H-mm': '',
-            'Secondary Qty/Pack': '',
-            'Secondary Empty Weight': '',
-            'Secondary Pack Weight': '',
-            
-            # Packaging Procedures (10 steps)
-            'Procedure Step 1': '',
-            'Procedure Step 2': '',
-            'Procedure Step 3': '',
-            'Procedure Step 4': '',
-            'Procedure Step 5': '',
-            'Procedure Step 6': '',
-            'Procedure Step 7': '',
-            'Procedure Step 8': '',
-            'Procedure Step 9': '',
-            'Procedure Step 10': '',
-            
-            # Approval
-            'Issued By': '',
-            'Reviewed By': '',
-            'Approved By': ''
+        self.similarity_threshold = 0.3
+        self.stop_words = {
+            'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+            'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
+            'to', 'was', 'will', 'with', 'or', 'but', 'not', 'this', 'have',
+            'had', 'what', 'when', 'where', 'who', 'which', 'why', 'how'
         }
-    
-    def apply_border_to_range(self, ws, start_cell, end_cell):
-        """Apply borders to a range of cells"""
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                       top=Side(style='thin'), bottom=Side(style='thin'))
         
-        # Parse cell references
-        start_col = ord(start_cell[0]) - ord('A')
-        start_row = int(start_cell[1:])
-        end_col = ord(end_cell[0]) - ord('A')
-        end_row = int(end_cell[1:])
+        if ADVANCED_NLP:
+            try:
+                self.stop_words = set(stopwords.words('english'))
+                self.vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
+            except:
+                pass
         
-        for row in range(start_row, end_row + 1):
-            for col in range(start_col, end_col + 1):
-                cell = ws.cell(row=row, column=col+1)
-                cell.border = border
-    
-    def create_exact_template_excel(self):
-        """Create the exact Excel template matching the image"""
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Packaging Instruction"
-        
-        # Define styles
-        blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-        light_blue_fill = PatternFill(start_color="D6EAF8", end_color="D6EAF8", fill_type="solid")
-        white_font = Font(color="FFFFFF", bold=True, size=12)
-        black_font = Font(color="000000", bold=True, size=14)
-        regular_font = Font(color="000000", size=12)
-        border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                       top=Side(style='thin'), bottom=Side(style='thin'))
-        center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
-        title_font = Font(bold=True, size=12)
-        header_font = Font(bold=True)
-        
-        # Set column widths to match the image exactly
-        ws.column_dimensions['A'].width = 14
-        ws.column_dimensions['B'].width = 12
-        ws.column_dimensions['C'].width = 12
-        ws.column_dimensions['D'].width = 12
-        ws.column_dimensions['E'].width = 12
-        ws.column_dimensions['F'].width = 12
-        ws.column_dimensions['G'].width = 12
-        ws.column_dimensions['H'].width = 12
-        ws.column_dimensions['I'].width = 12
-        ws.column_dimensions['J'].width = 12
-        ws.column_dimensions['K'].width = 12
-        ws.column_dimensions['L'].width = 24
-
-        # Set row heights
-        for row in range(1, 51):
-            ws.row_dimensions[row].height = 16
-
-        # Header Row - "Packaging Instruction"
-        ws.merge_cells('A1:K1')
-        ws['A1'] = "Packaging Instruction"
-        ws['A1'].fill = blue_fill
-        ws['A1'].font = white_font
-        ws['A1'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A1', 'K1')
-
-        # Current Packaging header (right side)
-        ws['L1'] = "CURRENT PACKAGING"
-        ws['L1'].fill = blue_fill
-        ws['L1'].font = white_font
-        ws['L1'].border = border
-        ws['L1'].alignment = center_alignment
-
-        # Revision information row
-        ws['A2'] = "Revision No."
-        ws['A2'].border = border
-        ws['A2'].alignment = left_alignment
-        ws['A2'].font = regular_font
-
-        ws.merge_cells('B2:E2')
-        ws['B2'] = "Revision 1"
-        ws['B2'].border = border
-        self.apply_border_to_range(ws, 'B2', 'E2')
-
-        # Date field
-        ws['F2'] = "Date"
-        ws['F2'].border = border
-        ws['F2'].alignment = left_alignment
-        ws['F2'].font = regular_font
-
-        # Merge cells for date value
-        ws.merge_cells('G2:K2')
-        ws['G2'] = ""
-        ws['G2'].border = border
-        self.apply_border_to_range(ws, 'G2', 'K2')
-
-        ws['L2'] = ""
-        ws['L2'].border = border
-
-        # Row 3 - empty with borders
-        ws.merge_cells('B3:E3')
-        ws['B3'] = ""
-        self.apply_border_to_range(ws, 'A3', 'L3')
-
-        # Row 4 - Section headers
-        ws.merge_cells('A4:D4')
-        ws['A4'] = "Vendor Information"
-        ws['A4'].font = title_font
-        ws['A4'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A4', 'D4')
-
-        ws['E4'] = ""
-        ws['E4'].border = border
-
-        ws.merge_cells('F4:I4')
-        ws['F4'] = "Part Information"
-        ws['F4'].font = title_font
-        ws['F4'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'F4', 'I4')
-
-        # Apply borders to remaining cells in row 4
-        for col in ['J', 'K', 'L']:
-            ws[f'{col}4'] = ""
-            ws[f'{col}4'].border = border
-
-        # Vendor Code Row
-        ws['A5'] = "Code"
-        ws['A5'].font = header_font
-        ws['A5'].alignment = left_alignment
-        ws['A5'].border = border
-
-        ws.merge_cells('B5:D5')
-        ws['B5'] = ""
-        self.apply_border_to_range(ws, 'B5', 'D5')
-
-        ws['E5'] = ""
-        ws['E5'].border = border
-        
-        # Part fields
-        ws['F5'] = "Part No."
-        ws['F5'].border = border
-        ws['F5'].alignment = left_alignment
-        ws['F5'].font = regular_font
-
-        ws.merge_cells('G5:K5')
-        ws['G5'] = ""
-        self.apply_border_to_range(ws, 'G5', 'K5')
-
-        ws['L5'] = ""
-        ws['L5'].border = border
-
-        # Vendor Name Row
-        ws['A6'] = "Name"
-        ws['A6'].font = header_font
-        ws['A6'].alignment = left_alignment
-        ws['A6'].border = border
-
-        ws.merge_cells('B6:D6')
-        ws['B6'] = ""
-        self.apply_border_to_range(ws, 'B6', 'D6')
-
-        ws['E6'] = ""
-        ws['E6'].border = border
-
-        ws['F6'] = "Description"
-        ws['F6'].border = border
-        ws['F6'].alignment = left_alignment
-        ws['F6'].font = regular_font
-
-        ws.merge_cells('G6:K6')
-        ws['G6'] = ""
-        self.apply_border_to_range(ws, 'G6', 'K6')
-
-        ws['L6'] = ""
-        ws['L6'].border = border
-
-        # Vendor Location Row
-        ws['A7'] = "Location"
-        ws['A7'].font = header_font
-        ws['A7'].alignment = left_alignment
-        ws['A7'].border = border
-
-        ws.merge_cells('B7:D7')
-        ws['B7'] = ""
-        self.apply_border_to_range(ws, 'B7', 'D7')
-
-        ws['E7'] = ""
-        ws['E7'].border = border
-
-        ws['F7'] = "Unit Weight"
-        ws['F7'].border = border
-        ws['F7'].alignment = left_alignment
-        ws['F7'].font = regular_font
-
-        ws.merge_cells('G7:K7')
-        ws['G7'] = ""
-        self.apply_border_to_range(ws, 'G7', 'K7')
-
-        ws['L7'] = ""
-        ws['L7'].border = border
-
-        # Additional row after Unit Weight (Row 8) for L, W, H
-        ws['F8'] = "L"
-        ws['F8'].border = border
-        ws['F8'].alignment = left_alignment
-        ws['F8'].font = regular_font
-
-        ws['G8'] = ""
-        ws['G8'].border = border
-
-        ws['H8'] = "W"
-        ws['H8'].border = border
-        ws['H8'].alignment = center_alignment
-        ws['H8'].font = regular_font
-
-        ws['I8'] = ""
-        ws['I8'].border = border
-
-        ws['J8'] = "H"
-        ws['J8'].border = border
-        ws['J8'].alignment = center_alignment
-        ws['J8'].font = regular_font
-
-        ws['K8'] = ""
-        ws['K8'].border = border
-
-        # Empty cells for A-E and L in row 8
-        for col in ['A', 'B', 'C', 'D', 'E', 'L']:
-            ws[f'{col}8'] = ""
-            ws[f'{col}8'].border = border
-
-        # Title row for Primary Packaging
-        ws.merge_cells('A9:K9')
-        ws['A9'] = "Primary Packaging Instruction (Primary / Internal)"
-        ws['A9'].fill = blue_fill
-        ws['A9'].font = white_font
-        ws['A9'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A9', 'K9')
-
-        ws['L9'] = "CURRENT PACKAGING"
-        ws['L9'].fill = blue_fill
-        ws['L9'].font = white_font
-        ws['L9'].border = border
-        ws['L9'].alignment = center_alignment
-
-        # Primary packaging headers
-        headers = ["Packaging Type", "L-mm", "W-mm", "H-mm", "Qty/Pack", "Empty Weight", "Pack Weight"]
-        for i, header in enumerate(headers):
-            col = chr(ord('A') + i)
-            ws[f'{col}10'] = header
-            ws[f'{col}10'].border = border
-            ws[f'{col}10'].alignment = center_alignment
-            ws[f'{col}10'].font = regular_font
-
-        # Empty cells for remaining columns in row 10
-        for col in ['H', 'I', 'J', 'K', 'L']:
-            ws[f'{col}10'] = ""
-            ws[f'{col}10'].border = border
-
-        # Primary packaging data rows (11-13)
-        for row in range(11, 14):
-            for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']:
-                ws[f'{col}{row}'] = ""
-                ws[f'{col}{row}'].border = border
-
-        # TOTAL row
-        ws['D13'] = "TOTAL"
-        ws['D13'].border = border
-        ws['D13'].font = black_font
-        ws['D13'].alignment = center_alignment
-
-        # Secondary Packaging Instruction header
-        ws.merge_cells('A14:J14')
-        ws['A14'] = "Secondary Packaging Instruction (Outer / External)"
-        ws['A14'].fill = blue_fill
-        ws['A14'].font = white_font
-        ws['A14'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A14', 'J14')
-
-        ws['K14'] = ""
-        ws['K14'].border = border
-
-        ws['L10'] = "PROBLEM IF ANY:"
-        ws['L10'].border = border
-        ws['L10'].font = black_font
-        ws['L10'].alignment = left_alignment
-
-        # Secondary packaging headers
-        for i, header in enumerate(headers):
-            col = chr(ord('A') + i)
-            ws[f'{col}15'] = header
-            ws[f'{col}15'].border = border
-            ws[f'{col}15'].alignment = center_alignment
-            ws[f'{col}15'].font = regular_font
-
-        # Empty cells for remaining columns in row 15
-        for col in ['H', 'I', 'J', 'K']:
-            ws[f'{col}15'] = ""
-            ws[f'{col}15'].border = border
-
-        ws['L11'] = "CAUTION: REVISED DESIGN"
-        ws['L11'].fill = red_fill
-        ws['L11'].font = white_font
-        ws['L11'].border = border
-        ws['L11'].alignment = center_alignment
-
-        # Secondary packaging data rows (16-18)
-        for row in range(16, 19):
-            for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']:
-                ws[f'{col}{row}'] = ""
-                ws[f'{col}{row}'].border = border
-
-        # TOTAL row for secondary
-        ws['D18'] = "TOTAL"
-        ws['D18'].border = border
-        ws['D18'].font = black_font
-        ws['D18'].alignment = center_alignment
-
-        # Packaging Procedure section
-        ws.merge_cells('A19:K19')
-        ws['A19'] = "Packaging Procedure"
-        ws['A19'].fill = blue_fill
-        ws['A19'].font = white_font
-        ws['A19'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A19', 'K19')
-
-        ws['L19'] = ""
-        ws['L19'].border = border
-
-        # Packaging procedure steps (rows 20-29) - WITH MERGED CELLS
-        for i in range(1, 11):
-            row = 19 + i
-            ws[f'A{row}'] = str(i)
-            ws[f'A{row}'].border = border
-            ws[f'A{row}'].alignment = center_alignment
-            ws[f'A{row}'].font = regular_font
-
-            # MERGE CELLS B to J for each procedure step
-            ws.merge_cells(f'B{row}:J{row}')
-            ws[f'B{row}'] = ""
-            ws[f'B{row}'].alignment = left_alignment
-            self.apply_border_to_range(ws, f'B{row}', f'J{row}')
-
-            # K and L columns
-            ws[f'K{row}'] = ""
-            ws[f'K{row}'].border = border
-            ws[f'L{row}'] = ""
-            ws[f'L{row}'].border = border
-
-        # Reference Images/Pictures section
-        ws.merge_cells('A30:K30')
-        ws['A30'] = "Reference Images/Pictures"
-        ws['A30'].fill = blue_fill
-        ws['A30'].font = white_font
-        ws['A30'].alignment = center_alignment
-        self.apply_border_to_range(ws, 'A30', 'K30')
-
-        ws['L30'] = ""
-        ws['L30'].border = border
-
-        # Image section headers
-        ws.merge_cells('A31:C31')
-        ws['A31'] = "Primary Packaging"
-        ws['A31'].alignment = center_alignment
-        ws['A31'].font = regular_font
-        self.apply_border_to_range(ws, 'A31', 'C31')
-
-        ws.merge_cells('D31:G31')
-        ws['D31'] = "Secondary Packaging"
-        ws['D31'].alignment = center_alignment
-        ws['D31'].font = regular_font
-        self.apply_border_to_range(ws, 'D31', 'G31')
-
-        ws.merge_cells('H31:J31')
-        ws['H31'] = "Label"
-        ws['H31'].alignment = center_alignment
-        ws['H31'].font = regular_font
-        self.apply_border_to_range(ws, 'H31', 'J31')
-
-        ws['K31'] = ""
-        ws['K31'].border = border
-        ws['L31'] = ""
-        ws['L31'].border = border
-
-        # Image placeholder areas (rows 32-37)
-        ws.merge_cells('A32:C37')
-        ws['A32'] = "Primary\nPackaging"
-        ws['A32'].alignment = center_alignment
-        ws['A32'].font = regular_font
-        self.apply_border_to_range(ws, 'A32', 'C37')
-
-        # Arrow 1
-        ws['D35'] = "→"
-        ws['D35'].border = border
-        ws['D35'].alignment = center_alignment
-        ws['D35'].font = Font(size=20, bold=True)
-
-        # Secondary Packaging image area
-        ws.merge_cells('E32:F37')
-        ws['E32'] = "SECONDARY\nPACKAGING"
-        ws['E32'].alignment = center_alignment
-        ws['E32'].font = regular_font
-        ws['E32'].fill = light_blue_fill
-        self.apply_border_to_range(ws, 'E32', 'F37')
-
-        # Arrow 2
-        ws['G35'] = "→"
-        ws['G35'].border = border
-        ws['G35'].alignment = center_alignment
-        ws['G35'].font = Font(size=20, bold=True)
-
-        # Label image area
-        ws.merge_cells('H32:K37')
-        ws['H32'] = "LABEL"
-        ws['H32'].alignment = center_alignment
-        ws['H32'].font = regular_font
-        self.apply_border_to_range(ws, 'H32', 'K37')
-
-        # Add borders to remaining cells in image section
-        for row in range(32, 38):
-            for col in ['D', 'G', 'L']:
-                if row != 35 or col != 'D':  # Skip D35 and G35 which have arrows
-                    if row != 35 or col != 'G':
-                        ws[f'{col}{row}'] = ""
-                        ws[f'{col}{row}'].border = border
-
-        # Approval Section
-        ws.merge_cells('A38:C38')
-        ws['A38'] = "Issued By"
-        ws['A38'].alignment = center_alignment
-        ws['A38'].font = regular_font
-        self.apply_border_to_range(ws, 'A38', 'C38')
-
-        ws.merge_cells('D38:G38')
-        ws['D38'] = "Reviewed By"
-        ws['D38'].alignment = center_alignment
-        ws['D38'].font = regular_font
-        self.apply_border_to_range(ws, 'D38', 'G38')
-
-        ws.merge_cells('H38:K38')
-        ws['H38'] = "Approved By"
-        ws['H38'].alignment = center_alignment
-        ws['H38'].font = regular_font
-        self.apply_border_to_range(ws, 'H38', 'K38')
-
-        ws['L38'] = ""
-        ws['L38'].border = border
-
-        # Signature boxes (rows 39-42)
-        ws.merge_cells('A39:C42')
-        ws['A39'] = ""
-        self.apply_border_to_range(ws, 'A39', 'C42')
-
-        ws.merge_cells('D39:G42')
-        ws['D39'] = ""
-        self.apply_border_to_range(ws, 'D39', 'G42')
-
-        ws.merge_cells('H39:K42')
-        ws['H39'] = ""
-        self.apply_border_to_range(ws, 'H39', 'K42')
-
-        # Apply borders for L column in signature section
-        for row in range(39, 43):
-            ws[f'L{row}'] = ""
-            ws[f'L{row}'].border = border
-
-        # Second Approval Section
-        ws.merge_cells('A43:C43')
-        ws['A43'] = "Issued By"
-        ws['A43'].alignment = center_alignment
-        ws['A43'].font = regular_font
-        self.apply_border_to_range(ws, 'A43', 'C43')
-
-        ws.merge_cells('D43:G43')
-        ws['D43'] = "Reviewed By"
-        ws['D43'].alignment = center_alignment
-        ws['D43'].font = regular_font
-        self.apply_border_to_range(ws, 'D43', 'G43')
-
-        ws.merge_cells('H43:J43')
-        ws['H43'] = "Approved By"
-        ws['H43'].alignment = center_alignment
-        ws['H43'].font = regular_font
-        self.apply_border_to_range(ws, 'H43', 'J43')
-
-        ws['K43'] = ""
-        ws['K43'].border = border
-        ws['L43'] = ""
-        ws['L43'].border = border
-
-        # Second signature boxes (rows 44-47)
-        ws.merge_cells('A44:C47')
-        ws['A44'] = ""
-        self.apply_border_to_range(ws, 'A44', 'C47')
-
-        ws.merge_cells('D44:G47')
-        ws['D44'] = ""
-        self.apply_border_to_range(ws, 'D44', 'G47')
-
-        ws.merge_cells('H44:J47')
-        ws['H44'] = ""
-        self.apply_border_to_range(ws, 'H44', 'J47')
-
-        # Apply borders for K and L columns in second signature section
-        for row in range(44, 48):
-            ws[f'K{row}'] = ""
-            ws[f'K{row}'].border = border
-            ws[f'L{row}'] = ""
-            ws[f'L{row}'].border = border
-
-        # Final rows (48-50) - empty with borders
-        for row in range(48, 51):
-            for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']:
-                ws[f'{col}{row}'] = ""
-                ws[f'{col}{row}'].border = border
-
-        # Return the workbook
-        return wb
-    
-    def extract_data_from_uploaded_file(self, uploaded_file):
-        """Extract data from uploaded CSV/Excel file"""
+    def preprocess_text(self, text):
+        """Preprocess text for better matching"""
         try:
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
+            if pd.isna(text) or text is None:
+                return ""
+            
+            text = str(text).lower()
+            text = re.sub(r'[^\w\s]', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+            
+            return text
+        except Exception as e:
+            st.error(f"Error in preprocess_text: {e}")
+            return ""
+    
+    def extract_keywords(self, text):
+        """Extract keywords from text"""
+        try:
+            text = self.preprocess_text(text)
+            if not text:
+                return []
+            
+            if ADVANCED_NLP:
+                tokens = word_tokenize(text)
+                keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
             else:
-                df = pd.read_excel(uploaded_file)
+                # Simple tokenization fallback
+                tokens = text.split()
+                keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
             
-            # Convert dataframe to dictionary
-            data_dict = {}
-            for col in df.columns:
-                col_clean = col.strip()  # Remove any whitespace
-                if col_clean in self.template_fields:
-                    data_dict[col_clean] = str(df[col].iloc[0]) if not df.empty and pd.notna(df[col].iloc[0]) else ""
-            
-            return data_dict, df
+            return keywords
         except Exception as e:
-            raise Exception(f"Error reading file: {str(e)}")
+            st.error(f"Error in extract_keywords: {e}")
+            return []
     
-    def extract_images_from_file(self, uploaded_file):
-        """Extract images from uploaded file if it's an Excel file"""
-        images = {}
+    def calculate_similarity(self, text1, text2):
+        """Calculate similarity between two texts"""
         try:
-            if uploaded_file.name.endswith(('.xlsx', '.xls')):
-                # Create a temporary file to save the uploaded file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
-                    tmp.write(uploaded_file.getvalue())
-                    tmp_path = tmp.name
-                
-                # Try to extract images from Excel file
+            if not text1 or not text2:
+                return 0.0
+            
+            text1 = self.preprocess_text(text1)
+            text2 = self.preprocess_text(text2)
+            
+            if not text1 or not text2:
+                return 0.0
+            
+            # Sequence similarity
+            sequence_sim = SequenceMatcher(None, text1, text2).ratio()
+            
+            # TF-IDF similarity (if available)
+            tfidf_sim = 0.0
+            if ADVANCED_NLP:
                 try:
-                    wb = load_workbook(tmp_path)
-                    ws = wb.active
-                    
-                    # Check if there are any images in the worksheet
-                    if hasattr(ws, '_images'):
-                        for i, img in enumerate(ws._images):
-                            # Convert image to bytes
-                            img_bytes = io.BytesIO()
-                            img.image.save(img_bytes, format='PNG')
-                            img_bytes.seek(0)
-                            images[f'image_{i+1}'] = img_bytes.getvalue()
-                    
-                    wb.close()
-                except Exception as e:
-                    st.warning(f"Could not extract images from Excel file: {str(e)}")
-                
-                # Clean up temporary file
-                try:
-                    os.unlink(tmp_path)
+                    tfidf_matrix = self.vectorizer.fit_transform([text1, text2])
+                    tfidf_sim = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
                 except:
-                    pass
+                    tfidf_sim = 0.0
+            
+            # Keyword overlap
+            keywords1 = set(self.extract_keywords(text1))
+            keywords2 = set(self.extract_keywords(text2))
+            
+            if keywords1 and keywords2:
+                keyword_sim = len(keywords1.intersection(keywords2)) / len(keywords1.union(keywords2))
+            else:
+                keyword_sim = 0.0
+            
+            # Weighted average
+            if ADVANCED_NLP:
+                final_similarity = (sequence_sim * 0.4) + (tfidf_sim * 0.4) + (keyword_sim * 0.2)
+            else:
+                final_similarity = (sequence_sim * 0.7) + (keyword_sim * 0.3)
+            
+            return final_similarity
         except Exception as e:
-            st.error(f"Error processing file for images: {str(e)}")
-        
-        return images
+            st.error(f"Error in calculate_similarity: {e}")
+            return 0.0
     
-    def fill_template_with_data(self, template_wb, data_dict):
-        """Fill the template with provided data"""
-        ws = template_wb.active
-        
-        # Mapping of data keys to cell positions (updated for exact template)
-        cell_mapping = {
-            'Revision No.': 'B2',
-            'Date': 'G2',
-            'Vendor Code': 'B5',
-            'Vendor Name': 'B6',
-            'Vendor Location': 'B7',
-            'Part No.': 'G5',
-            'Part Description': 'G6',
-            'Part Unit Weight': 'G7',
-            'Primary Packaging Type': 'A11',
-            'Primary L-mm': 'B11',
-            'Primary W-mm': 'C11',
-            'Primary H-mm': 'D11',
-            'Primary Qty/Pack': 'E11',
-            'Primary Empty Weight': 'F11',
-            'Primary Pack Weight': 'G11',
-            'Secondary Packaging Type': 'A16',
-            'Secondary L-mm': 'B16',
-            'Secondary W-mm': 'C16',
-            'Secondary H-mm': 'D16',
-            'Secondary Qty/Pack': 'E16',
-            'Secondary Empty Weight': 'F16',
-            'Secondary Pack Weight': 'G16',
-        }
-        
-        # Fill procedure steps in merged cells
-        for i in range(1, 11):
-            key = f'Procedure Step {i}'
-            if key in data_dict and data_dict[key]:
-                row = 19 + i
-                # Only set value on the top-left cell of merged range
-                ws[f'B{row}'].value = data_dict[key]
-        
-        # Fill other mapped cells
-        for key, cell_pos in cell_mapping.items():
-            if key in data_dict and data_dict[key]:
-                # Only set value if it's not a merged cell or if it's the top-left cell
-                cell = ws[cell_pos]
-                if not isinstance(cell, MergedCell):
-                    cell.value = data_dict[key]
-                    
-        return template_wb
+    def is_data_cell(self, cell_value):
+        """Determine if a cell is meant for data entry"""
+        try:
+            if not cell_value or pd.isna(cell_value):
+                return True
+            
+            cell_str = str(cell_value).strip()
+            if not cell_str:
+                return True
+            
+            # Data placeholder patterns
+            data_patterns = [
+                r'^_+$', r'^\.*$', r'^-+$', r'^\[.*\]$', r'^\{.*\}$', r'^<.*>$',
+                r'enter|fill|data|value|input|here|placeholder', r'^\d{1,2}/\d{1,2}/\d{2,4}$',
+                r'^dd/mm/yyyy|mm/dd/yyyy|yyyy-mm-dd$', r'^\$\d*\.?\d*$', r'^\d*\.?\d*$',
+            ]
+            
+            cell_lower = cell_str.lower()
+            
+            for pattern in data_patterns:
+                if re.search(pattern, cell_lower):
+                    return True
+            
+            # Special character dominated cells
+            if len(cell_str) <= 10 and len(re.sub(r'[a-zA-Z0-9]', '', cell_str)) > len(cell_str) * 0.5:
+                return True
+            
+            return False
+        except Exception as e:
+            st.error(f"Error in is_data_cell: {e}")
+            return False
     
-    def add_current_packaging_images(self, template_wb, images_dict):
-        """Add current packaging images to the template"""
-        ws = template_wb.active
+    def is_section_header(self, text):
+        """Identify section headers that should never be mapped"""
+        try:
+            if not text or pd.isna(text):
+                return False
+                
+            text = str(text).strip()
+            if not text:
+                return False
+                
+            text_lower = text.lower()
+            
+            section_patterns = [
+                'packaging instruction', 'vendor information', 'part information', 'current packaging',
+                'primary packaging', 'secondary packaging', 'packaging procedure', 'reference image',
+                'problem', 'instruction', 'details', 'specification', 'requirements', 'process',
+                'procedure', 'approved by', 'reviewed by', 'issued by'
+            ]
+            
+            for pattern in section_patterns:
+                if pattern in text_lower:
+                    return True
+            
+            if len(text.split()) > 3 and not text.endswith(':') and len(text) > 15:
+                return True
+                
+            return False
+        except Exception as e:
+            st.error(f"Error in is_section_header: {e}")
+            return False
+    
+    def is_table_header(self, text):
+        """Identify table headers that should never be mapped"""
+        try:
+            if not text or pd.isna(text):
+                return False
+                
+            text = str(text).strip()
+            if not text:
+                return False
+                
+            text_lower = text.lower()
+            
+            table_patterns = [
+                'l-mm', 'w-mm', 'h-mm', 'length', 'width', 'height', 'dimension',
+                'qty/pack', 'pack weight', 'empty weight', 'total', 'packaging type',
+                'weight', 'quantity', 'size', 'volume', 'capacity'
+            ]
+            
+            for pattern in table_patterns:
+                if pattern in text_lower:
+                    return True
+            
+            if re.search(r'mm|cm|kg|gm|pcs|qty|pack|dimension|weight|size', text_lower):
+                return True
+                
+            return False
+        except Exception as e:
+            st.error(f"Error in is_table_header: {e}")
+            return False
+    
+    def is_label_cell(self, text):
+        """Identify mappable field labels"""
+        try:
+            if not text or pd.isna(text):
+                return False
+                
+            text = str(text).strip()
+            if not text:
+                return False
+            
+            if (self.is_data_cell(text) or 
+                self.is_section_header(text) or 
+                self.is_table_header(text)):
+                return False
+            
+            mappable_fields = [
+                'code', 'name', 'part no', 'description', 'revision no', 'revision',
+                'vendor', 'supplier', 'customer', 'client', 'company', 'manufacturer',
+                'address', 'phone', 'email', 'contact', 'reference', 'ref',
+                'date', 'time', 'invoice', 'bill', 'order', 'id', 'number',
+                'serial', 'batch', 'lot', 'model', 'version', 'type', 'category'
+            ]
+            
+            text_lower = text.lower()
+            
+            for field in mappable_fields:
+                if field in text_lower:
+                    return True
+            
+            if text.endswith(':'):
+                return True
+            
+            if (len(text.split()) <= 3 and 
+                len(text) > 1 and 
+                not text.isdigit() and
+                not text.isupper() and
+                len(text) < 20):
+                return True
+            
+            return False
+        except Exception as e:
+            st.error(f"Error in is_label_cell: {e}")
+            return False
+    
+    def classify_cell_type(self, cell_value):
+        """Classify the cell type based on its content"""
+        try:
+            if not cell_value or pd.isna(cell_value):
+                return 'data_cell'
+            
+            text = str(cell_value).strip()
+            
+            if not text:
+                return 'data_cell'
+            
+            text_lower = text.lower()
+            
+            if self.is_data_cell(text):
+                return 'data_cell'
+            
+            if self.is_section_header(text):
+                return 'section_header'
+            
+            if self.is_table_header(text):
+                return 'table_header'
+            
+            if len(text) > 50 or (text.isupper() and len(text.split()) >= 4):
+                return 'title'
+            
+            field_keywords = ['name', 'number', 'date', 'time', 'code', 'id', 'description',
+                              'weight', 'size', 'quantity', 'address', 'phone', 'email',
+                              'vendor', 'customer', 'amount', 'price', 'total', 'type', 'part',
+                              'reference', 'ref', 'model', 'version', 'serial', 'batch']
+            
+            if any(kw in text_lower for kw in field_keywords):
+                return 'field_header'
+            
+            if text.endswith(':'):
+                return 'field_header'
+            
+            if self.is_label_cell(text):
+                return 'field_header'
+            
+            return 'data_cell'
+            
+        except Exception as e:
+            st.error(f"Error in classify_cell_type: {e}")
+            return 'data_cell'
+    
+    def find_template_fields(self, template_file):
+        """Find all template fields with automatic classification"""
+        fields = {}
         
         try:
-            # Add primary packaging image
-            if 'current_primary' in images_dict:
-                img_data = images_dict['current_primary']
-                img = Image(io.BytesIO(img_data))
-                img.width = 150
-                img.height = 100
-                ws.add_image(img, 'L5')
+            workbook = openpyxl.load_workbook(template_file)
+            worksheet = workbook.active
             
-            # Add secondary packaging image  
-            if 'current_secondary' in images_dict:
-                img_data = images_dict['current_secondary']
-                img = Image(io.BytesIO(img_data))
-                img.width = 150
-                img.height = 100
-                ws.add_image(img, 'L10')
+            merged_ranges = worksheet.merged_cells.ranges
             
-            # Add label image
-            if 'current_label' in images_dict:
-                img_data = images_dict['current_label']
-                img = Image(io.BytesIO(img_data))
-                img.width = 150
-                img.height = 100
-                ws.add_image(img, 'L16')
-                
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    try:
+                        if cell.value is not None:
+                            cell_value = str(cell.value).strip()
+                            
+                            if cell_value:
+                                cell_coord = cell.coordinate
+                                merged_range = None
+                                
+                                for merge_range in merged_ranges:
+                                    if cell.coordinate in merge_range:
+                                        merged_range = str(merge_range)
+                                        break
+                                
+                                cell_type = self.classify_cell_type(cell_value)
+                                
+                                fields[cell_coord] = {
+                                    'value': cell_value,
+                                    'row': cell.row,
+                                    'column': cell.column,
+                                    'merged_range': merged_range,
+                                    'is_label': cell_type == 'field_header',
+                                    'is_data_cell': cell_type == 'data_cell',
+                                    'cell_type': cell_type
+                                }
+                    except Exception as e:
+                        st.error(f"Error processing cell {cell.coordinate}: {e}")
+                        continue
+            
+            workbook.close()
+            
         except Exception as e:
-            st.warning(f"Could not add images to template: {str(e)}")
+            st.error(f"Error reading template: {e}")
         
-        return template_wb
-def main():
-    st.set_page_config(page_title="Exact Packaging Instruction Template", layout="wide")
+        return fields
     
-    st.title("📦 Exact Packaging Instruction Template Manager")
-    st.markdown("Create and fill the exact packaging instruction template with proper merged cells and current packaging image upload.")
-    
-    # Initialize the template manager
-    template_manager = ExactPackagingTemplateManager()
-    
-    # Sidebar for admin controls
-    with st.sidebar:
-        st.header("Template Controls")
-        
-        # Download empty template
-        if st.button("📥 Download Empty Template"):
-            wb = template_manager.create_exact_template_excel()
-            output = io.BytesIO()
-            wb.save(output)
-            output.seek(0)
+    def map_data_to_template(self, template_fields, data_df):
+        """Automatically map data columns to template fields"""
+        mapping_results = {}
+        try:
+            data_columns = data_df.columns.tolist()
             
-            st.download_button(
-                label="Download Exact Template",
-                data=output.getvalue(),
-                file_name="exact_packaging_instruction_template.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            st.success("✅ Empty template ready for download!")
-    
-    # Main content area
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.subheader("📋 Data Input")
-    
-    # File upload for data
-    uploaded_file = st.file_uploader(
-        "Upload CSV/Excel file with packaging data",
-        type=['csv', 'xlsx', 'xls'],
-        help="Upload a file containing the packaging instruction data"
-    )
-    # Manual data entry option
-    with st.expander("🖊️ Manual Data Entry", expanded=not uploaded_file):
-        # Create form for manual entry
-        with st.form("manual_data_form"):
-            st.markdown("### Header Information")
-            revision_no = st.text_input("Revision No.", value="Revision 1")
-            date = st.date_input("Date", value=pd.Timestamp.now().date())
-                
-            st.markdown("### Vendor Information")
-            vendor_code = st.text_input("Vendor Code")
-            vendor_name = st.text_input("Vendor Name")
-            vendor_location = st.text_input("Vendor Location")
-                
-            st.markdown("### Part Information")
-            part_no = st.text_input("Part No.")
-            part_description = st.text_input("Part Description")
-            part_unit_weight = st.text_input("Part Unit Weight")
-            part_weight_unit = st.selectbox("Weight Unit", ["grams", "kg", "lbs", "oz"])
-                
-            st.markdown("### Primary Packaging")
-            primary_type = st.text_input("Primary Packaging Type")
-            col1_p, col2_p, col3_p = st.columns(3)
-            with col1_p:
-                primary_l = st.text_input("Length (mm)")
-            with col2_p:
-                primary_w = st.text_input("Width (mm)")
-            with col3_p:
-                primary_h = st.text_input("Height (mm)")
-                
-            primary_qty = st.text_input("Quantity per Pack")
-            primary_empty_weight = st.text_input("Empty Weight")
-            primary_pack_weight = st.text_input("Pack Weight")
-                
-            st.markdown("### Secondary Packaging")
-            secondary_type = st.text_input("Secondary Packaging Type")
-            col1_s, col2_s, col3_s = st.columns(3)
-            with col1_s:
-                secondary_l = st.text_input("Length (mm)", key="sec_l")
-            with col2_s:
-                secondary_w = st.text_input("Width (mm)", key="sec_w")
-            with col3_s:
-                secondary_h = st.text_input("Height (mm)", key="sec_h")
-                
-            secondary_qty = st.text_input("Quantity per Pack", key="sec_qty")
-            secondary_empty_weight = st.text_input("Empty Weight", key="sec_empty")
-            secondary_pack_weight = st.text_input("Pack Weight", key="sec_pack")
-                
-            st.markdown("### Packaging Procedures")
-            procedure_steps = []
-            for i in range(1, 11):
-                step = st.text_area(f"Step {i}", key=f"step_{i}")
-                procedure_steps.append(step)
-                
-            st.markdown("### Approval")
-            issued_by = st.text_input("Issued By")
-            reviewed_by = st.text_input("Reviewed By")
-            approved_by = st.text_input("Approved By")
-                
-            submitted = st.form_submit_button("Save Manual Data")
-                
-            if submitted:
-                # Create data dictionary from manual input
-                manual_data = {
-                    'Revision No.': revision_no,
-                    'Date': str(date),
-                    'Vendor Code': vendor_code,
-                    'Vendor Name': vendor_name,
-                    'Vendor Location': vendor_location,
-                    'Part No.': part_no,
-                    'Part Description': part_description,
-                    'Part Unit Weight': f"{part_unit_weight} {part_weight_unit}",
-                    'Primary Packaging Type': primary_type,
-                    'Primary L-mm': primary_l,
-                    'Primary W-mm': primary_w,
-                    'Primary H-mm': primary_h,
-                    'Primary Qty/Pack': primary_qty,
-                    'Primary Empty Weight': primary_empty_weight,
-                    'Primary Pack Weight': primary_pack_weight,
-                    'Secondary Packaging Type': secondary_type,
-                    'Secondary L-mm': secondary_l,
-                    'Secondary W-mm': secondary_w,
-                    'Secondary H-mm': secondary_h,
-                    'Secondary Qty/Pack': secondary_qty,
-                    'Secondary Empty Weight': secondary_empty_weight,
-                    'Secondary Pack Weight': secondary_pack_weight,
-                    'Issued By': issued_by,
-                    'Reviewed By': reviewed_by,
-                    'Approved By': approved_by
-                }
+            mappable_fields = {coord: field for coord, field in template_fields.items()
+                               if field.get('cell_type') == 'field_header' or field.get('is_label') == True}
+            
+            for coord, field in mappable_fields.items():
+                try:
+                    best_match = None
+                    best_score = 0.0
                     
-                # Add procedure steps
-                for i, step in enumerate(procedure_steps, 1):
-                    manual_data[f'Procedure Step {i}'] = step
+                    for data_col in data_columns:
+                        similarity = self.calculate_similarity(field['value'], data_col)
+                        
+                        if similarity > best_score and similarity >= self.similarity_threshold:
+                            best_score = similarity
+                            best_match = data_col
                     
-                st.session_state.manual_data = manual_data
-                st.success("✅ Manual data saved successfully!")
+                    mapping_results[coord] = {
+                        'template_field': field['value'],
+                        'data_column': best_match,
+                        'similarity': best_score,
+                        'field_info': field,
+                        'is_mappable': best_match is not None
+                    }
+                        
+                except Exception as e:
+                    st.error(f"Error mapping field {coord}: {e}")
+                    continue
+                    
+        except Exception as e:
+            st.error(f"Error in map_data_to_template: {e}")
+            
+        return mapping_results
+    
+    def find_data_cell_for_label(self, worksheet, field_info):
+        """Automatically find data cell for a label"""
+        try:
+            row = field_info['row']
+            col = field_info['column']
+            
+            # Look right of label
+            for offset in range(1, 5):
+                target_col = col + offset
+                if target_col <= worksheet.max_column:
+                    cell = worksheet.cell(row=row, column=target_col)
+                    if self.is_data_cell(cell.value):
+                        return cell.coordinate
+            
+            # Look below label
+            for offset in range(1, 3):
+                target_row = row + offset
+                if target_row <= worksheet.max_row:
+                    cell = worksheet.cell(row=target_row, column=col)
+                    if self.is_data_cell(cell.value):
+                        return cell.coordinate
+            
+            # Look in nearby area
+            for r_offset in range(-1, 2):
+                for c_offset in range(-1, 4):
+                    if r_offset == 0 and c_offset == 0:
+                        continue
+                        
+                    target_row = row + r_offset
+                    target_col = col + c_offset
+                    
+                    if (target_row > 0 and target_row <= worksheet.max_row and 
+                        target_col > 0 and target_col <= worksheet.max_column):
+                        
+                        cell = worksheet.cell(row=target_row, column=target_col)
+                        if self.is_data_cell(cell.value):
+                            return cell.coordinate
+            
+            return None
+            
+        except Exception as e:
+            st.error(f"Error in find_data_cell_for_label: {e}")
+            return None
+    
+    def fill_template_with_data(self, template_file, mapping_results, data_df):
+        """Fill template with mapped data and return the filled workbook"""
+        try:
+            workbook = openpyxl.load_workbook(template_file)
+            worksheet = workbook.active
+            
+            filled_count = 0
+            
+            for coord, mapping in mapping_results.items():
+                try:
+                    if mapping['data_column'] is not None and mapping['is_mappable']:
+                        field_info = mapping['field_info']
+                        
+                        target_cell = self.find_data_cell_for_label(worksheet, field_info)
+                        
+                        if target_cell and len(data_df) > 0:
+                            data_value = data_df.iloc[0][mapping['data_column']]
+                            worksheet[target_cell] = str(data_value) if not pd.isna(data_value) else ""
+                            filled_count += 1
+                            
+                except Exception as e:
+                    st.error(f"Error filling mapping {coord}: {e}")
+                    continue
+            
+            return workbook, filled_count
+            
+        except Exception as e:
+            st.error(f"Error filling template: {e}")
+            return None, 0
+
+# Initialize session state
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = None
+if 'templates' not in st.session_state:
+    st.session_state.templates = {}
+if 'ai_mapper' not in st.session_state:
+    st.session_state.ai_mapper = AdvancedTemplateMapper()
+
+# User management functions
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, hashed):
+    return hash_password(password) == hashed
+
+# Default users
+DEFAULT_USERS = {
+    "admin": {
+        "password": hash_password("admin123"),
+        "role": "admin",
+        "name": "Administrator"
+    },
+    "user1": {
+        "password": hash_password("user123"),
+        "role": "user",
+        "name": "Regular User"
+    }
+}
+
+def authenticate_user(username, password):
+    if username in DEFAULT_USERS:
+        if verify_password(password, DEFAULT_USERS[username]['password']):
+            return DEFAULT_USERS[username]['role'], DEFAULT_USERS[username]['name']
+    return None, None
+
+# Login function
+def show_login():
+    st.title("🤖 AI Template Mapper")
+    st.markdown("### Enhanced template processing with merged cell support")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.subheader("🖼️ Current Packaging Images")
-        
-        # Image upload section
-        st.markdown("Upload current packaging images:")
-        
-        col_img1, col_img2, col_img3 = st.columns(3)
-        
-        with col_img1:
-            st.markdown("**Primary Packaging**")
-            primary_img = st.file_uploader(
-                "Primary Image",
-                type=['png', 'jpg', 'jpeg'],
-                key="primary_img"
-            )
-            if primary_img:
-                st.image(primary_img, caption="Primary Packaging", use_column_width=True)
-        
-        with col_img2:
-            st.markdown("**Secondary Packaging**")
-            secondary_img = st.file_uploader(
-                "Secondary Image",
-                type=['png', 'jpg', 'jpeg'],
-                key="secondary_img"
-            )
-            if secondary_img:
-                st.image(secondary_img, caption="Secondary Packaging", use_column_width=True)
-        
-        with col_img3:
-            st.markdown("**Label**")
-            label_img = st.file_uploader(
-                "Label Image",
-                type=['png', 'jpg', 'jpeg'],
-                key="label_img"
-            )
-            if label_img:
-                st.image(label_img, caption="Label", use_column_width=True)
-    
-    # Processing section
-    st.markdown("---")
-    st.subheader("🔧 Generate Filled Template")
-    
-    if st.button("📄 Generate Filled Template", type="primary"):
-        try:
-            # Determine data source
-            data_dict = {}
+        with st.form("login_form"):
+            st.subheader("Login")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login", use_container_width=True)
             
-            if uploaded_file:
-                # Extract data from uploaded file
-                data_dict, df = template_manager.extract_data_from_uploaded_file(uploaded_file)
-                st.success(f"✅ Data extracted from {uploaded_file.name}")
-                
-                # Display extracted data
-                with st.expander("📊 View Extracted Data"):
-                    st.dataframe(df)
+            if submit:
+                role, name = authenticate_user(username, password)
+                if role:
+                    st.session_state.authenticated = True
+                    st.session_state.user_role = role
+                    st.session_state.username = username
+                    st.session_state.name = name
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
+        
+        st.info("**Demo Credentials:**\n- Admin: admin / admin123\n- User: user1 / user123")
+
+# Main dashboard
+def show_dashboard():
+    # Header
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title(f"Welcome, {st.session_state.name} ({st.session_state.user_role})")
+    with col2:
+        if st.button("Logout", type="secondary"):
+            st.session_state.authenticated = False
+            st.session_state.user_role = None
+            st.rerun()
+    
+    # Sidebar navigation
+    with st.sidebar:
+        st.header("Navigation")
+        
+        if st.session_state.user_role == 'admin':
+            page = st.selectbox(
+                "Select Page",
+                ["Dashboard", "Upload Template", "View Templates", "Analyze Template", "AI Data Processor"]
+            )
+        else:
+            page = st.selectbox(
+                "Select Page", 
+                ["Dashboard", "AI Data Processor", "View Templates"]
+            )
+    
+    # Page routing
+    if page == "Dashboard":
+        show_dashboard_content()
+    elif page == "Upload Template":
+        show_upload_template()
+    elif page == "View Templates":
+        show_templates()
+    elif page == "Analyze Template":
+        show_analyze_template()
+    elif page == "AI Data Processor":
+        show_data_processor()
+
+def show_dashboard_content():
+    st.header("🚀 Enhanced AI Template System")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("✨ New Features")
+        st.markdown("""
+        - ✅ **Merged Cell Support**: Handles complex templates with merged cells
+        - 🤖 **Advanced AI Mapping**: Uses NLP for intelligent field detection
+        - 📊 **Automatic Form Recognition**: Detects fillable fields automatically
+        - 🔍 **Template Analysis**: Comprehensive structure analysis
+        - 🎯 **Smart Data Placement**: Intelligent data positioning
+        """)
+    
+    with col2:
+        st.subheader("📊 System Statistics")
+        total_templates = len(st.session_state.templates)
+        threshold = st.session_state.ai_mapper.similarity_threshold
+        
+        st.metric("Available Templates", total_templates)
+        st.metric("AI Similarity Threshold", f"{threshold:.2f}")
+        st.metric("Advanced Processing", "Active" if ADVANCED_NLP else "Basic")
+
+def show_upload_template():
+    if st.session_state.user_role != 'admin':
+        st.error("Access denied")
+        return
+    
+    st.header("📁 Upload Template")
+    st.info("Upload any Excel template - even complex forms with merged cells! AI will automatically detect fillable fields.")
+    
+    with st.form("upload_form"):
+        template_name = st.text_input("Template Name", placeholder="Enter template name")
+        uploaded_file = st.file_uploader("Select Excel Template File", type=['xlsx'])
+        submit = st.form_submit_button("Upload & Analyze Template")
+        
+        if submit and uploaded_file and template_name:
+            try:
+                with st.spinner("Analyzing template..."):
+                    # Save uploaded file temporarily
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = tmp_file.name
                     
-            elif hasattr(st.session_state, 'manual_data'):
-                # Use manual data
-                data_dict = st.session_state.manual_data
-                st.success("✅ Using manual data entry")
-            else:
-                st.warning("⚠️ Please upload a file or enter manual data first")
-                st.stop()
+                    # Analyze template
+                    template_fields = st.session_state.ai_mapper.find_template_fields(tmp_path)
+                    
+                    # Determine template type
+                    template_type = "Complex Form" if len(template_fields) > 10 else "Standard"
+                    
+                    # Store template data
+                    st.session_state.templates[template_name] = {
+                        'file_data': uploaded_file.getvalue(),
+                        'fields': template_fields,
+                        'field_count': len(template_fields),
+                        'type': template_type,
+                        'created_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        'created_by': st.session_state.username
+                    }
+                    
+                    # Clean up temp file
+                    os.unlink(tmp_path)
+                    
+                    st.success(f"Template '{template_name}' uploaded successfully!")
+                    st.info(f"Detected {len(template_fields)} fields | Type: {template_type}")
+                    
+                    # Show field breakdown
+                    field_types = {}
+                    for field in template_fields.values():
+                        cell_type = field.get('cell_type', 'unknown')
+                        field_types[cell_type] = field_types.get(cell_type, 0) + 1
+                    
+                    st.subheader("Field Analysis")
+                    for cell_type, count in field_types.items():
+                        st.write(f"- {cell_type.replace('_', ' ').title()}: {count}")
+                    
+            except Exception as e:
+                st.error(f"Failed to upload template: {str(e)}")
+
+def show_templates():
+    st.header("📋 Available Templates")
+    
+    if not st.session_state.templates:
+        st.info("No templates available")
+        return
+    
+    for template_name, template_info in st.session_state.templates.items():
+        with st.expander(f"📋 {template_name}"):
+            col1, col2 = st.columns(2)
             
-            # Create template
-            wb = template_manager.create_exact_template_excel()
-            
-            # Fill template with data
-            filled_wb = template_manager.fill_template_with_data(wb, data_dict)
-            
-            # Prepare images dictionary
-            images_dict = {}
-            if primary_img:
-                images_dict['current_primary'] = primary_img.getvalue()
-            if secondary_img:
-                images_dict['current_secondary'] = secondary_img.getvalue()
-            if label_img:
-                images_dict['current_label'] = label_img.getvalue()
-            
-            # Add images to template
-            if images_dict:
-                filled_wb = template_manager.add_current_packaging_images(filled_wb, images_dict)
-                st.success(f"✅ Added {len(images_dict)} image(s) to template")
-            
-            # Save filled template
-            output = io.BytesIO()
-            filled_wb.save(output)
-            output.seek(0)
-            
-            # Generate filename
-            part_no = data_dict.get('Part No.', 'Unknown')
-            filename = f"packaging_instruction_{part_no.replace('/', '_')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            
-            st.download_button(
-                label="📥 Download Filled Template",
-                data=output.getvalue(),
-                file_name=filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            
-            st.success("🎉 Template generated successfully!")
-            
-            # Show summary
-            with st.expander("📋 Template Summary"):
-                st.write("**Data Fields Filled:**")
-                filled_fields = [k for k, v in data_dict.items() if v]
-                for field in filled_fields:
-                    st.write(f"- {field}: {data_dict[field]}")
+            with col1:
+                st.write(f"**Created:** {template_info.get('created_date', 'Unknown')}")
+                st.write(f"**By:** {template_info.get('created_by', 'Unknown')}")
+                st.write(f"**Type:** {template_info.get('type', 'Standard')}")
                 
-                st.write(f"\n**Images Added:** {len(images_dict)}")
-                st.write(f"**Template Status:** Complete")
+            with col2:
+                st.write(f"**Fields:** {template_info.get('field_count', 0)}")
                 
+                if st.session_state.user_role == 'admin':
+                    if st.button(f"Delete {template_name}", key=f"del_{template_name}"):
+                        del st.session_state.templates[template_name]
+                        st.rerun()
+
+def show_analyze_template():
+    if st.session_state.user_role != 'admin':
+        st.error("Access denied")
+        return
+    
+    st.header("🔍 Analyze Template")
+    
+    uploaded_file = st.file_uploader("Select Excel file to analyze", type=['xlsx'])
+    
+    if uploaded_file:
+        try:
+            with st.spinner("Analyzing template structure..."):
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                    tmp_file.write(uploaded_file.getvalue())
+                    tmp_path = tmp_file.name
+                
+                template_fields = st.session_state.ai_mapper.find_template_fields(tmp_path)
+                os.unlink(tmp_path)
+            
+            st.success(f"Analysis complete! Found {len(template_fields)} fields")
+            
+            # Field breakdown
+            field_types = {}
+            for field in template_fields.values():
+                cell_type = field.get('cell_type', 'unknown')
+                if cell_type not in field_types:
+                    field_types[cell_type] = []
+                field_types[cell_type].append(field)
+            
+            # Display by type
+            for cell_type, fields in field_types.items():
+                with st.expander(f"{cell_type.replace('_', ' ').title()} ({len(fields)} fields)"):
+                    for field in fields[:10]:  # Show first 10
+                        st.write(f"• **{field['value']}** (Row {field['row']}, Col {field['column']})")
+                        if field.get('merged_range'):
+                            st.write(f"  └─ Merged range: {field['merged_range']}")
+                    
+                    if len(fields) > 10:
+                        st.write(f"... and {len(fields) - 10} more")
+                        
         except Exception as e:
-            st.error(f"❌ Error generating template: {str(e)}")
+            st.error(f"Error analyzing template: {str(e)}")
+
+def show_data_processor():
+    st.header("🤖 AI Data Processor")
+    st.info("Upload your data file and select a template. AI will automatically map and fill the template!")
+    
+    # Data file upload
+    data_file = st.file_uploader("Upload Data File", type=['csv', 'xlsx'])
+    
+    # Template selection
+    if st.session_state.templates:
+        selected_template = st.selectbox(
+            "Select Template",
+            options=list(st.session_state.templates.keys()),
+            format_func=lambda x: f"{x} ({st.session_state.templates[x]['type']})"
+        )
+    else:
+        st.warning("No templates available. Please upload a template first.")
+        return
+    
+    if data_file and selected_template:
+        try:
+            # Load data
+            if data_file.name.lower().endswith('.csv'):
+                data_df = pd.read_csv(data_file)
+            else:
+                data_df = pd.read_excel(data_file)
+            
+            st.subheader("📊 Data Preview")
+            st.dataframe(data_df.head(), use_container_width=True)
+            
+            if st.button("🚀 Process with AI", type="primary"):
+                with st.spinner("🤖 AI is processing your data..."):
+                    # Get template info
+                    template_info = st.session_state.templates[selected_template]
+                    template_fields = template_info['fields']
+                    
+                    # Create temporary template file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                        tmp_file.write(template_info['file_data'])
+                        template_path = tmp_file.name
+                    
+                    # AI mapping
+                    mapping_results = st.session_state.ai_mapper.map_data_to_template(template_fields, data_df)
+                    
+                    # Fill template
+                    filled_workbook, filled_count = st.session_state.ai_mapper.fill_template_with_data(
+                        template_path, mapping_results, data_df
+                    )
+                    
+                    # Clean up temp file
+                    os.unlink(template_path)
+                
+                if filled_workbook:
+                    st.success(f"✅ Processing complete! Filled {filled_count} fields automatically.")
+                    
+                    # Show mapping results
+                    st.subheader("🎯 AI Mapping Results")
+                    
+                    mapped_fields = [m for m in mapping_results.values() if m['is_mappable']]
+                    unmapped_fields = [m for m in mapping_results.values() if not m['is_mappable']]
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric("Successfully Mapped", len(mapped_fields))
+                        if mapped_fields:
+                            st.write("**Mapped Fields:**")
+                            for mapping in mapped_fields[:5]:  # Show first 5
+                                confidence = mapping['similarity'] * 100
+                                st.write(f"• {mapping['template_field']} ← {mapping['data_column']} ({confidence:.1f}%)")
+                            if len(mapped_fields) > 5:
+                                st.write(f"... and {len(mapped_fields) - 5} more")
+                    
+                    with col2:
+                        st.metric("Unmapped Fields", len(unmapped_fields))
+                        if unmapped_fields:
+                            st.write("**Unmapped Fields:**")
+                            for mapping in unmapped_fields[:5]:  # Show first 5
+                                st.write(f"• {mapping['template_field']}")
+                            if len(unmapped_fields) > 5:
+                                st.write(f"... and {len(unmapped_fields) - 5} more")
+                    
+                    # Download filled template
+                    st.subheader("📥 Download Results")
+                    
+                    # Save workbook to bytes
+                    output = io.BytesIO()
+                    filled_workbook.save(output)
+                    output.seek(0)
+                    
+                    # Generate filename
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"{selected_template}_filled_{timestamp}.xlsx"
+                    
+                    st.download_button(
+                        label="📁 Download Filled Template",
+                        data=output.getvalue(),
+                        file_name=filename,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        type="primary"
+                    )
+                    
+                    # Process multiple rows option
+                    if len(data_df) > 1:
+                        st.subheader("🔄 Batch Processing")
+                        st.info(f"Your data has {len(data_df)} rows. Process all rows?")
+                        
+                        if st.button("🚀 Process All Rows", type="secondary"):
+                            with st.spinner("Processing all data rows..."):
+                                # Create zip file for multiple templates
+                                zip_buffer = io.BytesIO()
+                                
+                                with tempfile.TemporaryDirectory() as temp_dir:
+                                    filled_files = []
+                                    
+                                    for idx, row in data_df.iterrows():
+                                        # Create single-row dataframe
+                                        single_row_df = pd.DataFrame([row])
+                                        
+                                        # Create temp template file
+                                        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+                                            tmp_file.write(template_info['file_data'])
+                                            temp_template_path = tmp_file.name
+                                        
+                                        # Fill template for this row
+                                        row_workbook, _ = st.session_state.ai_mapper.fill_template_with_data(
+                                            temp_template_path, mapping_results, single_row_df
+                                        )
+                                        
+                                        if row_workbook:
+                                            # Save to temp directory
+                                            row_filename = f"{selected_template}_row_{idx+1}_{timestamp}.xlsx"
+                                            row_filepath = os.path.join(temp_dir, row_filename)
+                                            row_workbook.save(row_filepath)
+                                            filled_files.append((row_filename, row_filepath))
+                                        
+                                        # Clean up temp template file
+                                        os.unlink(temp_template_path)
+                                    
+                                    # Create zip file
+                                    import zipfile
+                                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                                        for filename, filepath in filled_files:
+                                            zip_file.write(filepath, filename)
+                                
+                                zip_buffer.seek(0)
+                                
+                                st.success(f"✅ Processed {len(filled_files)} templates successfully!")
+                                
+                                st.download_button(
+                                    label="📦 Download All Filled Templates (ZIP)",
+                                    data=zip_buffer.getvalue(),
+                                    file_name=f"{selected_template}_batch_{timestamp}.zip",
+                                    mime="application/zip",
+                                    type="primary"
+                                )
+                else:
+                    st.error("❌ Failed to process template. Please check your data and template.")
+                    
+        except Exception as e:
+            st.error(f"Error processing data: {str(e)}")
             st.exception(e)
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("### 📝 Instructions")
-    st.markdown("""
-    1. **Upload Data**: Use CSV/Excel file with packaging data or enter manually
-    2. **Add Images**: Upload current packaging images (Primary, Secondary, Label)
-    3. **Generate**: Click 'Generate Filled Template' to create the filled Excel file
-    4. **Download**: Download the completed packaging instruction template
-    
-    **File Format Requirements:**
-    - CSV/Excel files should contain columns matching the template fields
-    - Images should be in PNG, JPG, or JPEG format
-    - All fields are optional but recommended for complete documentation
-    """)
+
+# Configuration sidebar
+def show_config_sidebar():
+    with st.sidebar:
+        st.header("⚙️ AI Configuration")
+        
+        # Similarity threshold
+        new_threshold = st.slider(
+            "Similarity Threshold",
+            min_value=0.1,
+            max_value=0.9,
+            value=st.session_state.ai_mapper.similarity_threshold,
+            step=0.05,
+            help="Higher values require closer matches"
+        )
+        
+        if new_threshold != st.session_state.ai_mapper.similarity_threshold:
+            st.session_state.ai_mapper.similarity_threshold = new_threshold
+            st.success("Threshold updated!")
+        
+        # Advanced settings
+        st.subheader("🔧 Advanced Settings")
+        
+        st.info(f"**NLP Status:** {'Advanced' if ADVANCED_NLP else 'Basic'}")
+        
+        if not ADVANCED_NLP:
+            st.warning("Install nltk and scikit-learn for better AI matching")
+        
+        # System info
+        st.subheader("📊 System Info")
+        st.write(f"Templates: {len(st.session_state.templates)}")
+        st.write(f"User: {st.session_state.get('name', 'Unknown')}")
+        st.write(f"Role: {st.session_state.get('user_role', 'Unknown')}")
+
+# Main application
+def main():
+    if not st.session_state.authenticated:
+        show_login()
+    else:
+        show_config_sidebar()
+        show_dashboard()
 
 if __name__ == "__main__":
     main()
