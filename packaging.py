@@ -292,7 +292,8 @@ class AdvancedTemplateMapper:
                 'vendor', 'supplier', 'customer', 'client', 'company', 'manufacturer',
                 'address', 'phone', 'email', 'contact', 'reference', 'ref',
                 'date', 'time', 'invoice', 'bill', 'order', 'id', 'number',
-                'serial', 'batch', 'lot', 'model', 'version', 'type', 'category'
+                'serial', 'batch', 'lot', 'model', 'version', 'type', 'category', 'Lmm','Wmm',
+                'Hmm', 'Unit Weight', 'L- mm', 'W- mm', 'H- mm','Qty / Pack', 'Qty/Pack'
             ]
             
             text_lower = text.lower()
