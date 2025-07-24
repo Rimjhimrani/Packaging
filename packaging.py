@@ -447,7 +447,7 @@ class AdvancedTemplateMapper:
         return mapping_results
     
     def find_data_cell_for_label(self, worksheet, field_info):
-         """Automatically find data cell for a label (improved merged cell handling)"""
+        """Automatically find data cell for a label (improved merged cell handling)"""
         try:
             row = field_info['row']
             col = field_info['column']
