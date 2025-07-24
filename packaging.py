@@ -26,26 +26,52 @@ st.set_page_config(
 
 # Try to import optional dependencies
 try:
-    import nltk
     from nltk.tokenize import word_tokenize
     from nltk.corpus import stopwords
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import cosine_similarity
-    ADVANCED_NLP = True
     
-    # Download required NLTK data
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        nltk.download('punkt', quiet=True)
+    # Initialize NLTK with better error handling
+    def initialize_nltk():
+        """Initialize NLTK with proper downloads and fallbacks"""
+        try:
+            # Try to download required NLTK data
+            required_downloads = [
+                ('punkt', 'tokenizers/punkt'),
+                ('punkt_tab', 'tokenizers/punkt_tab'), 
+                ('stopwords', 'corpora/stopwords')
+            ]
+            
+            for download_name, path in required_downloads:
+                try:
+                    nltk.data.find(path)
+                except LookupError:
+                    try:
+                        nltk.download(download_name, quiet=True)
+                    except Exception as e:
+                        print(f"Warning: Could not download {download_name}: {e}")
+            
+            # Test tokenization
+            word_tokenize("test")
+            return True
+            
+        except Exception as e:
+            print(f"NLTK initialization failed: {e}")
+            return False
     
-    try:
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        nltk.download('stopwords', quiet=True)
+    # Initialize NLTK
+    NLTK_READY = initialize_nltk()
+    
+    if NLTK_READY:
+        ADVANCED_NLP = True
+    else:
+        # Fallback: disable NLTK features if initialization fails
+        ADVANCED_NLP = False
+        st.warning("⚠️ NLTK initialization failed. Using basic text processing.")
         
-except ImportError:
+except ImportError as e:
     ADVANCED_NLP = False
+    NLTK_READY = False
     st.warning("⚠️ Advanced NLP features disabled. Install nltk and scikit-learn for better matching.")
 
 class AdvancedTemplateMapper:
@@ -81,24 +107,33 @@ class AdvancedTemplateMapper:
             return ""
     
     def extract_keywords(self, text):
-        """Extract keywords from text"""
+        """Extract keywords from text with improved error handling"""
         try:
             text = self.preprocess_text(text)
             if not text:
                 return []
-            
-            if ADVANCED_NLP:
-                tokens = word_tokenize(text)
-                keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
-            else:
-                # Simple tokenization fallback
-                tokens = text.split()
-                keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
-            
+            # Try NLTK tokenization if available
+            if ADVANCED_NLP and NLTK_READY:
+                try:
+                    tokens = word_tokenize(text)
+                    keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
+                    return keywords
+                except Exception as e:
+                    # If NLTK fails, fall back to simple tokenization
+                    print(f"NLTK tokenization failed, using fallback: {e}")
+            # Fallback: Simple tokenization
+            tokens = text.split()
+            keywords = [token for token in tokens if token not in self.stop_words and len(token) > 2]
             return keywords
         except Exception as e:
             st.error(f"Error in extract_keywords: {e}")
             return []
+    def simple_tokenize(text):
+        """Simple tokenization without NLTK dependency"""
+        # Remove punctuation and split
+        text = re.sub(r'[^\w\s]', ' ', text.lower())
+        tokens = text.split()
+        return [token for token in tokens if len(token) > 2]
     
     def calculate_similarity(self, text1, text2):
         """Calculate similarity between two texts"""
