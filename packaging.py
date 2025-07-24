@@ -543,7 +543,17 @@ class AdvancedTemplateMapper:
                         
                         if target_cell and len(data_df) > 0:
                             data_value = data_df.iloc[0][mapping['data_column']]
-                            worksheet[target_cell] = str(data_value) if not pd.isna(data_value) else ""
+                            
+                            cell_obj = worksheet[target_cell]
+                            if hasattr(cell_obj, '__class__') and cell_obj.__class__.__name__ == 'MergedCell':
+                                # Get top-left anchor of merged range
+                                for merged_range in worksheet.merged_cells.ranges:
+                                    if target_cell in merged_range:
+                                        anchor_cell = merged_range.start_cell
+                                        anchor_cell.value = str(data_value) if not pd.isna(data_value) else ""
+                                        break
+                            else:
+                                cell_obj.value = str(data_value) if not pd.isna(data_value) else ""
                             filled_count += 1
                             
                 except Exception as e:
