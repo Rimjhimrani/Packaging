@@ -128,6 +128,7 @@ class AdvancedTemplateMapper:
         except Exception as e:
             st.error(f"Error in extract_keywords: {e}")
             return []
+            
     def simple_tokenize(text):
         """Simple tokenization without NLTK dependency"""
         # Remove punctuation and split
